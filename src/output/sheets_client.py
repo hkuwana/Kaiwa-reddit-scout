@@ -2,6 +2,7 @@
 Google Sheets client for storing leads.
 """
 
+import json
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -45,44 +46,58 @@ class SheetsClient:
 
     def __init__(
         self,
-        credentials_file: Optional[str] = None,
+        credentials_source: Optional[str] = None,
         sheet_name: Optional[str] = None,
     ):
         """
         Initialize Sheets client.
 
         Args:
-            credentials_file: Path to Google service account JSON
+            credentials_source: Path to Google service account JSON OR inline JSON string
             sheet_name: Name of the spreadsheet to use
         """
-        self.credentials_file = credentials_file or sheets_config.credentials_file
+        self.credentials_source = credentials_source or sheets_config.credentials_source
         self.sheet_name = sheet_name or sheets_config.sheet_name
         self._client = None
         self._sheet = None
 
+    def _is_inline_json(self) -> bool:
+        """Check if credentials are inline JSON."""
+        return self.credentials_source.strip().startswith("{")
+
     def _get_credentials_path(self) -> Path:
         """Get full path to credentials file."""
-        path = Path(self.credentials_file)
+        path = Path(self.credentials_source)
         if not path.is_absolute():
             path = PROJECT_ROOT / path
         return path
 
     def is_configured(self) -> bool:
         """Check if Sheets is configured."""
+        if self._is_inline_json():
+            return True
         return self._get_credentials_path().exists()
 
     def _get_client(self):
         """Lazy initialization of gspread client."""
         if self._client is None:
-            creds_path = self._get_credentials_path()
-            if not creds_path.exists():
-                raise FileNotFoundError(
-                    f"Google credentials file not found: {creds_path}"
+            if self._is_inline_json():
+                # Parse inline JSON credentials
+                creds_info = json.loads(self.credentials_source)
+                credentials = Credentials.from_service_account_info(
+                    creds_info, scopes=SCOPES
+                )
+            else:
+                # Load from file
+                creds_path = self._get_credentials_path()
+                if not creds_path.exists():
+                    raise FileNotFoundError(
+                        f"Google credentials file not found: {creds_path}"
+                    )
+                credentials = Credentials.from_service_account_file(
+                    str(creds_path), scopes=SCOPES
                 )
 
-            credentials = Credentials.from_service_account_file(
-                str(creds_path), scopes=SCOPES
-            )
             self._client = gspread.authorize(credentials)
 
         return self._client

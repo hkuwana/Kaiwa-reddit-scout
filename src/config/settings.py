@@ -59,20 +59,30 @@ class GeminiConfig:
 @dataclass
 class SheetsConfig:
     """Google Sheets configuration."""
-    credentials_file: str
+    credentials_source: str  # Can be a file path or inline JSON
     sheet_name: str
 
     @classmethod
     def from_env(cls) -> "SheetsConfig":
         return cls(
-            credentials_file=os.getenv("GOOGLE_CREDENTIALS_FILE", "google_creds.json"),
+            credentials_source=os.getenv("GOOGLE_CREDENTIALS_FILE", "google_creds.json"),
             sheet_name=os.getenv("GOOGLE_SHEET_NAME", "Kaiwa Leads Dashboard"),
         )
 
+    def is_inline_json(self) -> bool:
+        """Check if credentials are inline JSON (starts with {)."""
+        return self.credentials_source.strip().startswith("{")
+
     def is_valid(self) -> bool:
-        """Check if credentials file exists."""
-        creds_path = PROJECT_ROOT / self.credentials_file
+        """Check if credentials are available (file exists or inline JSON)."""
+        if self.is_inline_json():
+            return True
+        creds_path = PROJECT_ROOT / self.credentials_source
         return creds_path.exists()
+
+    def get_credentials_path(self) -> Path:
+        """Get the path to credentials file."""
+        return PROJECT_ROOT / self.credentials_source
 
 
 @dataclass
@@ -110,7 +120,7 @@ def print_config_status():
     print(f"  - Model: {gemini_config.model}")
     print(f"  - Signal threshold: {gemini_config.signal_threshold}")
     print(f"Google Sheets configured: {sheets_config.is_valid()}")
-    print(f"  - Credentials: {sheets_config.credentials_file}")
+    print(f"  - Credentials: {'(inline JSON)' if sheets_config.is_inline_json() else sheets_config.credentials_source}")
     print(f"  - Sheet name: {sheets_config.sheet_name}")
     print(f"Log level: {app_config.log_level}")
     print(f"Max posts per run: {app_config.max_posts_per_run}")

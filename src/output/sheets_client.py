@@ -5,13 +5,12 @@ Google Sheets client for storing leads.
 import json
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
 import gspread
 from google.oauth2.service_account import Credentials
 
-from src.config.settings import sheets_config, PROJECT_ROOT
+from src.config.settings import sheets_config
 from src.storage.models import Lead
 
 logger = logging.getLogger(__name__)
@@ -44,52 +43,33 @@ SHEET_HEADERS = [
 class SheetsClient:
     """Client for writing leads to Google Sheets."""
 
-    def __init__(
-        self,
-        credentials_source: Optional[str] = None,
-        sheet_name: Optional[str] = None,
-    ):
+    def __init__(self, sheet_name: Optional[str] = None):
         """
         Initialize Sheets client.
 
         Args:
-            credentials_source: Path to Google service account JSON OR inline JSON string
             sheet_name: Name of the spreadsheet to use
         """
-        self.credentials_source = credentials_source or sheets_config.credentials_source
         self.sheet_name = sheet_name or sheets_config.sheet_name
         self._client = None
         self._sheet = None
 
-    def _is_inline_json(self) -> bool:
-        """Check if credentials are inline JSON."""
-        return self.credentials_source.strip().startswith("{")
-
-    def _get_credentials_path(self) -> Path:
-        """Get full path to credentials file."""
-        path = Path(self.credentials_source)
-        if not path.is_absolute():
-            path = PROJECT_ROOT / path
-        return path
-
     def is_configured(self) -> bool:
         """Check if Sheets is configured."""
-        if self._is_inline_json():
-            return True
-        return self._get_credentials_path().exists()
+        return sheets_config.is_valid()
 
     def _get_client(self):
         """Lazy initialization of gspread client."""
         if self._client is None:
-            if self._is_inline_json():
-                # Parse inline JSON credentials
-                creds_info = json.loads(self.credentials_source)
+            if sheets_config.has_inline_json():
+                # Parse inline JSON credentials from env var
+                creds_info = json.loads(sheets_config.credentials_json)
                 credentials = Credentials.from_service_account_info(
                     creds_info, scopes=SCOPES
                 )
             else:
                 # Load from file
-                creds_path = self._get_credentials_path()
+                creds_path = sheets_config.get_credentials_path()
                 if not creds_path.exists():
                     raise FileNotFoundError(
                         f"Google credentials file not found: {creds_path}"

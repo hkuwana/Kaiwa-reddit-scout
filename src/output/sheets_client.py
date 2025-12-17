@@ -43,14 +43,20 @@ SHEET_HEADERS = [
 class SheetsClient:
     """Client for writing leads to Google Sheets."""
 
-    def __init__(self, sheet_name: Optional[str] = None):
+    def __init__(self, sheet_name: Optional[str] = None, auto_date: bool = True):
         """
         Initialize Sheets client.
 
         Args:
-            sheet_name: Name of the spreadsheet to use
+            sheet_name: Name of the spreadsheet to use (or prefix if auto_date=True)
+            auto_date: If True, append date to sheet name (e.g., "Kaiwa-2025-12-18")
         """
-        self.sheet_name = sheet_name or sheets_config.sheet_name
+        base_name = sheet_name or sheets_config.sheet_name
+        if auto_date:
+            date_str = datetime.now().strftime("%Y-%m-%d")
+            self.sheet_name = f"{base_name}-{date_str}"
+        else:
+            self.sheet_name = base_name
         self._client = None
         self._sheet = None
 

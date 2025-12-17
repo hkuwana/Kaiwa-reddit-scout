@@ -182,27 +182,22 @@ def test_sheets():
         from src.output import SheetsClient
 
         print("Connecting to Google Sheets...")
-        client = SheetsClient()
+        # Use auto_date=False for testing to check existing sheets
+        client = SheetsClient(auto_date=False)
 
         # List all accessible sheets
         print("\nSheets accessible to service account:")
         sheets = client.list_available_sheets()
         if sheets:
             for s in sheets:
-                marker = " <-- TARGET" if s["name"] == sheets_config.sheet_name else ""
+                marker = " <-- matches config" if s["name"] == sheets_config.sheet_name else ""
                 print(f"  - {s['name']}{marker}")
                 print(f"    {s['url']}")
         else:
             print("  (none found - share your sheet with the service account email)")
 
-        print(f"\nLooking for: '{sheets_config.sheet_name}'")
-        url = client.get_sheet_url()
-        if url:
-            print(f"SUCCESS: Found sheet!")
-            print(f"  URL: {url}")
-        else:
-            print("NOT FOUND: Sheet not accessible")
-            print("  Make sure to share your Google Sheet with the service account email")
+        print(f"\nConfig sheet name: '{sheets_config.sheet_name}'")
+        print("(When running with --sheets, date will be appended automatically)")
 
         return True
 

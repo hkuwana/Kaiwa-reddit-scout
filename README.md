@@ -43,7 +43,7 @@ nano .env  # or use your preferred editor
 |---------|-----------|-----------|
 | Reddit API | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD` | [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) |
 | Gemini API | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
-| Google Sheets (optional) | `google_creds.json` file + `SHEETS_NAME` | [console.cloud.google.com](https://console.cloud.google.com/) |
+| Google Sheets (optional) | `GOOGLE_CREDENTIALS_JSON` + `GOOGLE_SHEET_NAME` | [console.cloud.google.com](https://console.cloud.google.com/) |
 | Resend (optional) | `RESEND_API_KEY`, `EMAIL_TO` | [resend.com/api-keys](https://resend.com/api-keys) |
 
 ### 3. Test your setup

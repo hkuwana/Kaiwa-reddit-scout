@@ -245,7 +245,8 @@ class SheetsClient:
         try:
             client = self._get_client()
             spreadsheet = client.open(self.sheet_name)
-            return spreadsheet.url
+            # Construct URL from spreadsheet ID (more reliable)
+            return f"https://docs.google.com/spreadsheets/d/{spreadsheet.id}"
         except Exception as e:
             logger.error(f"Error getting sheet URL: {e}")
             return None

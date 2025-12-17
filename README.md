@@ -6,9 +6,9 @@ A modular Python pipeline to discover high-signal language learning leads on Red
 
 - **Multi-language support**: Japanese, Korean, Chinese, Spanish, French, German, and 10+ more languages
 - **Smart filtering**: 208 trigger keywords catch high-signal posts; exclusion keywords filter out noise
-- **AI-powered analysis**: Google Gemini scores leads (1-10) and drafts personalized responses
+- **AI-powered analysis**: Google Gemini/Gemma scores leads (1-10) and drafts personalized responses
 - **Batch processing**: Efficient API usage with batch scoring to reduce costs
-- **Flexible output**: Local CSV or Google Sheets with timestamps
+- **Flexible output**: Local CSV or auto-dated Google Sheets (e.g., `Kaiwa-Scout-2025-12-18`)
 - **Local execution**: Run manually or schedule with cron
 
 ## Quick Start
@@ -42,9 +42,11 @@ nano .env  # or use your preferred editor
 | Service | Variables | Get it at |
 |---------|-----------|-----------|
 | Reddit API | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD` | [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) |
-| Gemini API | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
-| Google Sheets (optional) | `GOOGLE_CREDENTIALS_JSON` + `GOOGLE_SHEET_NAME` | [console.cloud.google.com](https://console.cloud.google.com/) |
+| Google AI | `GEMINI_API_KEY`, `GEMINI_MODEL` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| Google Sheets (optional) | `GOOGLE_CREDENTIALS_JSON`, `GOOGLE_SHEET_NAME`, `GOOGLE_FOLDER_ID` | [console.cloud.google.com](https://console.cloud.google.com/) |
 | Resend (optional) | `RESEND_API_KEY`, `EMAIL_TO` | [resend.com/api-keys](https://resend.com/api-keys) |
+
+**Supported AI models**: `gemini-1.5-flash`, `gemini-1.5-pro`, `gemma-3-27b-it` (set via `GEMINI_MODEL`)
 
 ### 3. Test your setup
 
@@ -94,21 +96,21 @@ python3 -m src.main -a -s languagelearning,LearnJapanese -l 30
 ## How It Works
 
 ```
-Reddit API  →  Keyword Filter  →  Gemini AI  →  CSV Output
-   (PRAW)       (208 triggers)    (Scoring)    (leads.csv)
-                                  (Drafts)         ↓
-                                             Google Sheets
-                                             (with timestamps)
+Reddit API  →  Keyword Filter  →  Google AI   →  CSV Output
+   (PRAW)       (208 triggers)   (Gemini/Gemma)  (leads.csv)
+                                   (Scoring)         ↓
+                                   (Drafts)    Google Sheets
+                                             (auto-dated daily)
 ```
 
 ### Pipeline Steps
 
 1. **Fetch**: Get new posts from 36 language learning subreddits
 2. **Filter**: Match against 208 trigger keywords, exclude 68 low-signal patterns
-3. **Score**: Gemini AI rates each lead 1-10 with HIGH/MEDIUM/LOW classification
+3. **Score**: AI rates each lead 1-10 with HIGH/MEDIUM/LOW classification
 4. **Draft**: Generate public comment and DM drafts for high-signal leads (score ≥7)
 5. **Save**: Output to `data/leads.csv` with all details
-6. **Export** (optional): Sync to Google Sheets with timestamps for tracking
+6. **Export** (optional): Create dated Google Sheet (e.g., `Kaiwa-Scout-2025-12-18`)
 
 ### Signal Classification
 

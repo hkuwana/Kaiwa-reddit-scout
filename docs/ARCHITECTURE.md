@@ -7,7 +7,7 @@ A modular pipeline to discover high-signal language learning leads on Reddit. Th
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 │   Reddit    │───▶│   Filter    │───▶│  AI Brain   │───▶│   Output    │
-│   (PRAW)    │    │  (Python)   │    │  (OpenAI)   │    │(Sheets/CSV) │
+│   (PRAW)    │    │  (Python)   │    │  (Gemini)   │    │(Sheets/CSV) │
 └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
      Phase 1           Phase 1           Phase 2           Phase 3
 ```
@@ -32,18 +32,18 @@ A modular pipeline to discover high-signal language learning leads on Reddit. Th
 
 ---
 
-### Phase 2: AI Analysis
+### Phase 2: AI Analysis ✅
 **Goal**: Score leads and generate response drafts
 
 **Components**:
-- `src/analyzer/openai_client.py` - OpenAI API wrapper
-- `src/analyzer/signal_scorer.py` - Determine HIGH/LOW signal
+- `src/analyzer/gemini_client.py` - Google Gemini API wrapper
+- `src/analyzer/signal_scorer.py` - Determine HIGH/MEDIUM/LOW signal (1-10 score)
 - `src/analyzer/response_generator.py` - Draft public comments & DMs
 
 **Output**: Enhanced CSV with additional columns:
-| ... | signal_score | signal_type | public_draft | dm_draft |
+| ... | signal_score | signal_type | category | public_draft | dm_draft |
 
-**Run**: `python -m src.main --phase 2`
+**Run**: `python -m src.main --analyze` (or `-a` flag)
 
 ---
 
@@ -96,8 +96,8 @@ kaiwa-reddit-scout/
 │   │
 │   ├── analyzer/
 │   │   ├── __init__.py
-│   │   ├── openai_client.py    # OpenAI wrapper
-│   │   ├── signal_scorer.py    # HIGH/LOW classification
+│   │   ├── gemini_client.py    # Google Gemini wrapper
+│   │   ├── signal_scorer.py    # HIGH/MEDIUM/LOW classification
 │   │   └── response_generator.py
 │   │
 │   ├── storage/
@@ -253,11 +253,12 @@ EXCLUDE_KEYWORDS = [
 - **Cost**: Free
 - **Strategy**: Use `stream.submissions()` for efficiency
 
-### OpenAI API
-- **Model**: gpt-4o-mini
-- **Cost**: ~$0.15 per 1M input tokens, ~$0.60 per 1M output tokens
-- **Strategy**: Only analyze posts that pass keyword filter
-- **Budget**: ~$5/month for 100 posts/day
+### Google Gemini API
+- **Model**: gemini-1.5-flash (default)
+- **Cost**: ~$0.075 per 1M input tokens, ~$0.30 per 1M output tokens (50% cheaper than GPT-4o-mini)
+- **Strategy**: Only analyze posts that pass keyword filter, generate responses only for high-signal leads
+- **Budget**: ~$2-3/month for 100 posts/day
+- **Free tier**: 1,500 requests/day for development
 
 ### Google Sheets API
 - **Rate**: 300 requests/minute

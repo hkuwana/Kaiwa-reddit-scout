@@ -1,8 +1,8 @@
 # Reddit API
 praw>=7.7.0
 
-# OpenAI (Phase 2)
-openai>=1.0.0
+# Google Gemini (Phase 2) - uses REST API directly, no SDK needed
+certifi>=2023.0.0  # SSL certificates for macOS
 
 # Google Sheets (Phase 3)
 gspread>=5.10.0
@@ -10,7 +10,7 @@ google-auth>=2.22.0
 google-auth-oauthlib>=1.0.0
 
 # Email (Phase 3)
-# Uses built-in smtplib
+resend>=2.0.0
 
 # Environment & Config
 python-dotenv>=1.0.0

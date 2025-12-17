@@ -251,6 +251,26 @@ class SheetsClient:
             logger.error(f"Error getting sheet URL: {e}")
             return None
 
+    def list_available_sheets(self) -> list[dict]:
+        """List all spreadsheets accessible to the service account."""
+        if not self.is_configured():
+            return []
+
+        try:
+            client = self._get_client()
+            sheets = client.openall()
+            return [
+                {
+                    "name": s.title,
+                    "id": s.id,
+                    "url": f"https://docs.google.com/spreadsheets/d/{s.id}",
+                }
+                for s in sheets
+            ]
+        except Exception as e:
+            logger.error(f"Error listing sheets: {e}")
+            return []
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

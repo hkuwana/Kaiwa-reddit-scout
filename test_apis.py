@@ -184,8 +184,26 @@ def test_sheets():
         print("Connecting to Google Sheets...")
         client = SheetsClient()
 
-        print(f"SUCCESS: Connected to sheet!")
-        print(f"  Sheet URL: {client.get_sheet_url()}")
+        # List all accessible sheets
+        print("\nSheets accessible to service account:")
+        sheets = client.list_available_sheets()
+        if sheets:
+            for s in sheets:
+                marker = " <-- TARGET" if s["name"] == sheets_config.sheet_name else ""
+                print(f"  - {s['name']}{marker}")
+                print(f"    {s['url']}")
+        else:
+            print("  (none found - share your sheet with the service account email)")
+
+        print(f"\nLooking for: '{sheets_config.sheet_name}'")
+        url = client.get_sheet_url()
+        if url:
+            print(f"SUCCESS: Found sheet!")
+            print(f"  URL: {url}")
+        else:
+            print("NOT FOUND: Sheet not accessible")
+            print("  Make sure to share your Google Sheet with the service account email")
+
         return True
 
     except Exception as e:

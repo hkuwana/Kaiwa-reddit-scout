@@ -4,6 +4,7 @@ Signal scoring for Reddit leads using Gemini.
 
 import json
 import logging
+import time
 from typing import Optional
 
 from src.analyzer.gemini_client import GeminiClient
@@ -12,7 +13,7 @@ from src.storage.models import Lead
 
 logger = logging.getLogger(__name__)
 
-# Scoring prompt template
+# Scoring prompt template for single lead
 SCORING_PROMPT = """You are analyzing a Reddit post to determine if this person is a good lead for Kaiwa, a language learning app that helps people practice speaking with AI tutors.
 
 Analyze the following post and rate it as a potential lead.
@@ -40,19 +41,40 @@ Respond with ONLY a JSON object in this exact format:
 {{"score": <1-10>, "signal_type": "<HIGH|MEDIUM|LOW>", "category": "<category>", "reasoning": "<brief explanation>"}}
 """
 
+# Batch scoring prompt for multiple leads
+BATCH_SCORING_PROMPT = """You are analyzing multiple Reddit posts to determine if these people are good leads for Kaiwa, a language learning app that helps people practice speaking with AI tutors.
+
+Analyze each post and rate it as a potential lead.
+
+SCORING CRITERIA:
+- Score 8-10 (HIGH): User explicitly expresses speaking anxiety, fear of conversation, or frustration with lack of speaking practice.
+- Score 5-7 (MEDIUM): User mentions language learning challenges that could relate to speaking, but it's not their main focus.
+- Score 1-4 (LOW): User's post is about language learning but unlikely to benefit from a speaking practice app.
+
+CATEGORIES: "Speaking Anxiety", "Practice Gap", "Immersion Prep", "Plateau Frustration", "App Fatigue", "General Learning"
+
+POSTS TO ANALYZE:
+{posts_json}
+
+Respond with ONLY a JSON array containing one object per post, in the same order:
+[{{"id": "<post_id>", "score": <1-10>, "signal_type": "<HIGH|MEDIUM|LOW>", "category": "<category>", "reasoning": "<brief explanation>"}}, ...]
+"""
+
 
 class SignalScorer:
     """Score leads based on signal strength using Gemini."""
 
-    def __init__(self, client: Optional[GeminiClient] = None):
+    def __init__(self, client: Optional[GeminiClient] = None, batch_size: int = 5):
         """
         Initialize scorer.
 
         Args:
             client: Gemini client (default: global client)
+            batch_size: Number of leads to process in a single API call
         """
         self.client = client or GeminiClient()
         self.threshold = gemini_config.signal_threshold
+        self.batch_size = batch_size
 
     def score_lead(self, lead: Lead) -> Lead:
         """
@@ -97,12 +119,71 @@ class SignalScorer:
 
         return lead
 
-    def score_leads(self, leads: list[Lead]) -> list[Lead]:
+    def _score_batch(self, leads: list[Lead]) -> list[Lead]:
         """
-        Score multiple leads.
+        Score a batch of leads in a single API call.
+
+        Args:
+            leads: List of leads to score (max batch_size)
+
+        Returns:
+            List of scored leads
+        """
+        if not leads:
+            return leads
+
+        # Prepare posts data for batch prompt
+        posts_data = []
+        for lead in leads:
+            posts_data.append({
+                "id": lead.post_id,
+                "subreddit": lead.subreddit,
+                "title": lead.title,
+                "body": lead.body[:500],  # Shorter for batch
+                "triggers": ", ".join(lead.matched_triggers[:5]),
+            })
+
+        prompt = BATCH_SCORING_PROMPT.format(posts_json=json.dumps(posts_data, indent=2))
+
+        try:
+            response = self.client.generate_json(prompt, max_tokens=2000)
+            if not response:
+                # Fallback to individual scoring
+                logger.warning("Batch scoring failed, falling back to individual scoring")
+                return [self.score_lead(lead) for lead in leads]
+
+            results = json.loads(response)
+
+            # Create a map of results by post_id
+            results_map = {r.get("id"): r for r in results}
+
+            # Update leads with scores
+            for lead in leads:
+                if lead.post_id in results_map:
+                    result = results_map[lead.post_id]
+                    lead.signal_score = result.get("score", 5)
+                    lead.signal_type = result.get("signal_type", "MEDIUM")
+                    lead.category = result.get("category", "General Learning")
+                    logger.info(
+                        f"Scored lead {lead.post_id}: {lead.signal_score}/10 ({lead.signal_type}) - {lead.category}"
+                    )
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse batch response: {e}, falling back to individual")
+            return [self.score_lead(lead) for lead in leads]
+        except Exception as e:
+            logger.error(f"Error in batch scoring: {e}, falling back to individual")
+            return [self.score_lead(lead) for lead in leads]
+
+        return leads
+
+    def score_leads(self, leads: list[Lead], use_batch: bool = True) -> list[Lead]:
+        """
+        Score multiple leads, optionally using batch processing.
 
         Args:
             leads: List of leads to score
+            use_batch: Whether to use batch processing (default: True)
 
         Returns:
             List of scored leads
@@ -111,13 +192,36 @@ class SignalScorer:
             logger.warning("Gemini not configured - returning leads unscored")
             return leads
 
-        scored = []
-        for i, lead in enumerate(leads):
-            logger.info(f"Scoring lead {i + 1}/{len(leads)}...")
-            scored_lead = self.score_lead(lead)
-            scored.append(scored_lead)
+        if not leads:
+            return leads
 
-        return scored
+        if use_batch and len(leads) > 1:
+            logger.info(f"Batch scoring {len(leads)} leads (batch_size={self.batch_size})...")
+            scored = []
+
+            # Process in batches
+            for i in range(0, len(leads), self.batch_size):
+                batch = leads[i:i + self.batch_size]
+                batch_num = i // self.batch_size + 1
+                total_batches = (len(leads) + self.batch_size - 1) // self.batch_size
+
+                logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch)} leads)...")
+                scored_batch = self._score_batch(batch)
+                scored.extend(scored_batch)
+
+                # Small delay between batches to avoid rate limiting
+                if i + self.batch_size < len(leads):
+                    time.sleep(0.5)
+
+            return scored
+        else:
+            # Individual scoring
+            scored = []
+            for i, lead in enumerate(leads):
+                logger.info(f"Scoring lead {i + 1}/{len(leads)}...")
+                scored_lead = self.score_lead(lead)
+                scored.append(scored_lead)
+            return scored
 
     def filter_high_signal(self, leads: list[Lead]) -> list[Lead]:
         """

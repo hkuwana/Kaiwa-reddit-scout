@@ -122,6 +122,12 @@ class Lead:
             "score": self.score,
             "comments": self.num_comments,
             "status": self.status,
+            # Phase 2: AI analysis fields
+            "signal_score": self.signal_score or "",
+            "signal_type": self.signal_type or "",
+            "category": self.category or "",
+            "public_draft": self.public_draft or "",
+            "dm_draft": self.dm_draft or "",
         }
 
 

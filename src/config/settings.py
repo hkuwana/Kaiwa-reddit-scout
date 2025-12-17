@@ -37,6 +37,26 @@ class RedditConfig:
 
 
 @dataclass
+class GeminiConfig:
+    """Gemini API configuration."""
+    api_key: str
+    model: str
+    signal_threshold: int
+
+    @classmethod
+    def from_env(cls) -> "GeminiConfig":
+        return cls(
+            api_key=os.getenv("GEMINI_API_KEY", ""),
+            model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
+            signal_threshold=int(os.getenv("SIGNAL_THRESHOLD", "7")),
+        )
+
+    def is_valid(self) -> bool:
+        """Check if API key is set."""
+        return bool(self.api_key)
+
+
+@dataclass
 class AppConfig:
     """Application configuration."""
     log_level: str
@@ -54,6 +74,7 @@ class AppConfig:
 
 # Global config instances
 reddit_config = RedditConfig.from_env()
+gemini_config = GeminiConfig.from_env()
 app_config = AppConfig.from_env()
 
 
@@ -65,6 +86,9 @@ def print_config_status():
     print(f"Reddit API configured: {reddit_config.is_valid()}")
     print(f"  - Client ID: {'***' + reddit_config.client_id[-4:] if len(reddit_config.client_id) > 4 else '(not set)'}")
     print(f"  - Username: {reddit_config.username or '(not set)'}")
+    print(f"Gemini API configured: {gemini_config.is_valid()}")
+    print(f"  - Model: {gemini_config.model}")
+    print(f"  - Signal threshold: {gemini_config.signal_threshold}")
     print(f"Log level: {app_config.log_level}")
     print(f"Max posts per run: {app_config.max_posts_per_run}")
     print(f"Data directory: {app_config.data_dir}")

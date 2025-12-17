@@ -15,7 +15,7 @@ from src.storage.models import Lead
 
 logger = logging.getLogger(__name__)
 
-# CSV column order
+# CSV column order (Phase 1 + Phase 2 columns)
 CSV_COLUMNS = [
     "scraped_at",
     "created_at",
@@ -29,6 +29,12 @@ CSV_COLUMNS = [
     "score",
     "comments",
     "status",
+    # Phase 2: AI analysis columns
+    "signal_score",
+    "signal_type",
+    "category",
+    "public_draft",
+    "dm_draft",
 ]
 
 

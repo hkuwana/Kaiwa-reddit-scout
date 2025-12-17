@@ -67,7 +67,8 @@ class GeminiClient:
             }
         }
 
-        if json_mode:
+        # JSON mode only supported by Gemini models, not Gemma
+        if json_mode and self.model_name.startswith("gemini"):
             payload["generationConfig"]["responseMimeType"] = "application/json"
 
         try:
@@ -124,7 +125,30 @@ class GeminiClient:
         Returns:
             Generated JSON string or None on error
         """
-        return self._make_request(prompt, max_tokens, temperature=0.3, json_mode=True)
+        response = self._make_request(prompt, max_tokens, temperature=0.3, json_mode=True)
+        if not response:
+            return None
+
+        # For models that don't support JSON mode (like Gemma),
+        # extract JSON from the text response
+        response = response.strip()
+
+        # Try to find JSON in the response
+        if response.startswith("{") or response.startswith("["):
+            return response
+
+        # Look for JSON block in markdown code fence
+        import re
+        json_match = re.search(r"```(?:json)?\s*([\[\{].*?[\]\}])\s*```", response, re.DOTALL)
+        if json_match:
+            return json_match.group(1)
+
+        # Look for JSON object or array anywhere in response
+        json_match = re.search(r"([\[\{].*[\]\}])", response, re.DOTALL)
+        if json_match:
+            return json_match.group(1)
+
+        return response
 
 
 # Global client instance (lazy loaded to avoid import issues)

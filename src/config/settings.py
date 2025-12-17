@@ -63,6 +63,7 @@ class SheetsConfig:
     credentials_file: str  # Path to credentials file (fallback)
     sheet_name: str
     folder_id: str  # Optional Google Drive folder ID
+    impersonate_email: str  # Email to impersonate (domain-wide delegation)
 
     @classmethod
     def from_env(cls) -> "SheetsConfig":
@@ -71,6 +72,7 @@ class SheetsConfig:
             credentials_file=os.getenv("GOOGLE_CREDENTIALS_FILE", "google_creds.json"),
             sheet_name=os.getenv("GOOGLE_SHEET_NAME", "Kaiwa Leads Dashboard"),
             folder_id=os.getenv("GOOGLE_FOLDER_ID", ""),
+            impersonate_email=os.getenv("GOOGLE_IMPERSONATE_EMAIL", ""),
         )
 
     def has_inline_json(self) -> bool:

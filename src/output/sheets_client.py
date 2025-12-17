@@ -84,6 +84,12 @@ class SheetsClient:
                     str(creds_path), scopes=SCOPES
                 )
 
+            # Apply domain-wide delegation if impersonate email is set
+            # This makes files owned by the user instead of the service account
+            if sheets_config.impersonate_email:
+                credentials = credentials.with_subject(sheets_config.impersonate_email)
+                logger.info(f"Using domain-wide delegation as {sheets_config.impersonate_email}")
+
             self._client = gspread.authorize(credentials)
 
         return self._client

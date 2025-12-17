@@ -95,7 +95,14 @@ class SheetsClient:
             logger.info(f"Opened existing sheet: {self.sheet_name}")
         except gspread.SpreadsheetNotFound:
             # Create new spreadsheet
-            spreadsheet = client.create(self.sheet_name)
+            if sheets_config.folder_id:
+                # Create in specific folder
+                spreadsheet = client.create(self.sheet_name, folder_id=sheets_config.folder_id)
+                logger.info(f"Created new sheet in folder: {self.sheet_name}")
+            else:
+                spreadsheet = client.create(self.sheet_name)
+                logger.info(f"Created new sheet: {self.sheet_name}")
+
             self._sheet = spreadsheet.sheet1
 
             # Add headers
@@ -106,11 +113,6 @@ class SheetsClient:
 
             # Auto-resize columns
             self._sheet.columns_auto_resize(0, len(SHEET_HEADERS) - 1)
-
-            logger.info(f"Created new sheet: {self.sheet_name}")
-
-            # Share with user (optional - you might want to add your email)
-            # spreadsheet.share('your-email@gmail.com', perm_type='user', role='writer')
 
         return self._sheet
 

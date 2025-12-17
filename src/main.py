@@ -1,0 +1,201 @@
+"""
+Kaiwa Reddit Scout - Main Entry Point
+
+Phase 1: Scrape Reddit posts, filter by keywords, save to CSV.
+"""
+
+import argparse
+import logging
+import sys
+from datetime import datetime
+
+from src.config.settings import app_config, print_config_status
+from src.config.languages import get_all_subreddits, LANGUAGES
+from src.scraper.reddit_client import get_reddit_client
+from src.scraper.keyword_filter import KeywordFilter
+from src.storage.csv_storage import CSVStorage
+
+
+def setup_logging(level: str = "INFO"):
+    """Configure logging."""
+    logging.basicConfig(
+        level=getattr(logging, level.upper()),
+        format="%(asctime)s | %(levelname)-8s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+
+def run_scout(
+    subreddits: list[str] | None = None,
+    limit: int = 100,
+    use_mock: bool = False,
+    verbose: bool = False,
+) -> dict:
+    """
+    Run the Reddit scout pipeline.
+
+    Args:
+        subreddits: List of subreddits to monitor (default: all language learning subs)
+        limit: Maximum posts to fetch
+        use_mock: Use mock client for testing
+        verbose: Print detailed output
+
+    Returns:
+        Dict with run statistics
+    """
+    logger = logging.getLogger(__name__)
+
+    # Use all subreddits if not specified
+    if not subreddits:
+        subreddits = get_all_subreddits()
+
+    logger.info(f"Starting Kaiwa Reddit Scout")
+    logger.info(f"Monitoring {len(subreddits)} subreddits, limit={limit}")
+
+    # Initialize components
+    client = get_reddit_client(use_mock=use_mock)
+    keyword_filter = KeywordFilter()
+    storage = CSVStorage()
+
+    # Fetch posts
+    logger.info("Fetching posts from Reddit...")
+    posts = list(client.get_new_posts(subreddits, limit=limit))
+    logger.info(f"Fetched {len(posts)} posts")
+
+    # Filter posts
+    logger.info("Filtering posts by keywords...")
+    leads = list(keyword_filter.filter_posts(iter(posts)))
+    logger.info(f"Found {len(leads)} potential leads")
+
+    if verbose:
+        keyword_filter.print_stats()
+
+    # Save to CSV
+    if leads:
+        logger.info("Saving leads to CSV...")
+        save_result = storage.save_leads(leads)
+        logger.info(f"Saved {save_result['saved']} new leads, skipped {save_result['skipped']} duplicates")
+    else:
+        save_result = {"saved": 0, "skipped": 0}
+        logger.info("No leads to save")
+
+    # Print summary
+    print("\n" + "=" * 60)
+    print("SCOUT RUN COMPLETE")
+    print("=" * 60)
+    print(f"  Time:        {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"  Subreddits:  {len(subreddits)}")
+    print(f"  Posts found: {len(posts)}")
+    print(f"  Leads found: {len(leads)}")
+    print(f"  New saved:   {save_result['saved']}")
+    print(f"  Duplicates:  {save_result['skipped']}")
+    print(f"  CSV file:    {storage.leads_file}")
+    print("=" * 60)
+
+    # Show new leads
+    if leads and verbose:
+        print("\nNew Leads:")
+        print("-" * 60)
+        for lead in leads:
+            print(f"\n  [{lead.subreddit}] u/{lead.author}")
+            print(f"  Title: {lead.title[:60]}...")
+            print(f"  Triggers: {', '.join(lead.matched_triggers[:3])}")
+            print(f"  Language: {lead.language_detected or 'unknown'}")
+            print(f"  Link: {lead.post_url}")
+            print(f"  DM: {lead.message_url}")
+
+    return {
+        "posts_fetched": len(posts),
+        "leads_found": len(leads),
+        "leads_saved": save_result["saved"],
+        "leads_skipped": save_result["skipped"],
+        "filter_stats": keyword_filter.get_stats(),
+    }
+
+
+def main():
+    """CLI entry point."""
+    parser = argparse.ArgumentParser(
+        description="Kaiwa Reddit Scout - Find language learning leads on Reddit"
+    )
+
+    parser.add_argument(
+        "--subreddits",
+        "-s",
+        type=str,
+        help="Comma-separated list of subreddits (default: all language learning subs)",
+    )
+    parser.add_argument(
+        "--limit",
+        "-l",
+        type=int,
+        default=100,
+        help="Maximum posts to fetch (default: 100)",
+    )
+    parser.add_argument(
+        "--mock",
+        "-m",
+        action="store_true",
+        help="Use mock data (for testing without Reddit API)",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Show detailed output",
+    )
+    parser.add_argument(
+        "--config",
+        "-c",
+        action="store_true",
+        help="Show configuration status and exit",
+    )
+    parser.add_argument(
+        "--languages",
+        action="store_true",
+        help="List supported languages and exit",
+    )
+
+    args = parser.parse_args()
+
+    # Setup logging
+    setup_logging(app_config.log_level)
+
+    # Handle info commands
+    if args.config:
+        print_config_status()
+        return
+
+    if args.languages:
+        print("\nSupported Languages:")
+        print("-" * 40)
+        for code, lang in LANGUAGES.items():
+            print(f"  [{code}] {lang.name}")
+            print(f"       Subreddits: {', '.join(lang.subreddits)}")
+        return
+
+    # Parse subreddits
+    subreddits = None
+    if args.subreddits:
+        subreddits = [s.strip() for s in args.subreddits.split(",")]
+
+    # Run the scout
+    try:
+        run_scout(
+            subreddits=subreddits,
+            limit=args.limit,
+            use_mock=args.mock,
+            verbose=args.verbose,
+        )
+    except KeyboardInterrupt:
+        print("\n\nInterrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        logging.error(f"Error: {e}")
+        if args.verbose:
+            raise
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

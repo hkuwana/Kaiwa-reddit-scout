@@ -165,10 +165,39 @@ def test_resend():
         return False
 
 
+def test_sheets():
+    """Test Google Sheets connection."""
+    print("\n" + "=" * 60)
+    print("5. GOOGLE SHEETS API TEST")
+    print("=" * 60)
+
+    from src.config.settings import sheets_config
+
+    if not sheets_config.is_valid():
+        print("SKIP: Google Sheets credentials not configured")
+        print("  Add google_creds.json to project root to enable")
+        return False
+
+    try:
+        from src.output import SheetsClient
+
+        print("Connecting to Google Sheets...")
+        client = SheetsClient()
+
+        print(f"SUCCESS: Connected to sheet!")
+        print(f"  Sheet URL: {client.get_sheet_url()}")
+        return True
+
+    except Exception as e:
+        print(f"FAILED: {e}")
+        print("\nCheck your Google credentials at https://console.cloud.google.com/")
+        return False
+
+
 def test_full_pipeline():
     """Test the full pipeline with mock data."""
     print("\n" + "=" * 60)
-    print("5. FULL PIPELINE TEST (Mock Data)")
+    print("6. FULL PIPELINE TEST (Mock Data)")
     print("=" * 60)
 
     try:
@@ -196,6 +225,7 @@ def main():
     parser.add_argument("--gemini", action="store_true", help="Test only Gemini API")
     parser.add_argument("--reddit", action="store_true", help="Test only Reddit API")
     parser.add_argument("--resend", action="store_true", help="Test only Resend API")
+    parser.add_argument("--sheets", action="store_true", help="Test only Google Sheets")
     parser.add_argument("--pipeline", action="store_true", help="Test full pipeline")
     args = parser.parse_args()
 
@@ -205,7 +235,7 @@ def main():
     print("=" * 60)
 
     # Determine which tests to run
-    run_all = not any([args.gemini, args.reddit, args.resend, args.pipeline])
+    run_all = not any([args.gemini, args.reddit, args.resend, args.sheets, args.pipeline])
 
     results = {}
 
@@ -221,6 +251,9 @@ def main():
 
     if run_all or args.resend:
         results["Resend"] = test_resend()
+
+    if run_all or args.sheets:
+        results["Sheets"] = test_sheets()
 
     if run_all or args.pipeline:
         results["Pipeline"] = test_full_pipeline()

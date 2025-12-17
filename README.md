@@ -8,7 +8,7 @@ A modular Python pipeline to discover high-signal language learning leads on Red
 - **Smart filtering**: 208 trigger keywords catch high-signal posts; exclusion keywords filter out noise
 - **AI-powered analysis**: Google Gemini scores leads (1-10) and drafts personalized responses
 - **Batch processing**: Efficient API usage with batch scoring to reduce costs
-- **Flexible output**: Local CSV with full lead details
+- **Flexible output**: Local CSV or Google Sheets with timestamps
 - **Local execution**: Run manually or schedule with cron
 
 ## Quick Start
@@ -43,6 +43,7 @@ nano .env  # or use your preferred editor
 |---------|-----------|-----------|
 | Reddit API | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD` | [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) |
 | Gemini API | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| Google Sheets (optional) | `google_creds.json` file + `SHEETS_NAME` | [console.cloud.google.com](https://console.cloud.google.com/) |
 | Resend (optional) | `RESEND_API_KEY`, `EMAIL_TO` | [resend.com/api-keys](https://resend.com/api-keys) |
 
 ### 3. Test your setup
@@ -54,6 +55,7 @@ python3 test_apis.py
 # Test individual APIs
 python3 test_apis.py --gemini
 python3 test_apis.py --reddit
+python3 test_apis.py --sheets
 python3 test_apis.py --resend
 ```
 
@@ -65,6 +67,9 @@ python3 -m src.main --limit 50
 
 # With AI analysis (scoring + response drafts)
 python3 -m src.main --analyze --limit 50
+
+# Export to Google Sheets with timestamps
+python3 -m src.main --analyze --sheets --limit 50
 
 # Full verbose output
 python3 -m src.main -a -v -l 50
@@ -78,6 +83,7 @@ python3 -m src.main -a -s languagelearning,LearnJapanese -l 30
 | Option | Short | Description |
 |--------|-------|-------------|
 | `--analyze` | `-a` | Enable Gemini AI analysis (scoring + drafts) |
+| `--sheets` | | Export to Google Sheets with timestamps |
 | `--verbose` | `-v` | Show detailed output |
 | `--limit N` | `-l N` | Max posts to fetch (default: 100) |
 | `--subreddits X,Y` | `-s X,Y` | Specific subreddits (default: all 36) |
@@ -90,7 +96,9 @@ python3 -m src.main -a -s languagelearning,LearnJapanese -l 30
 ```
 Reddit API  →  Keyword Filter  →  Gemini AI  →  CSV Output
    (PRAW)       (208 triggers)    (Scoring)    (leads.csv)
-                                  (Drafts)
+                                  (Drafts)         ↓
+                                             Google Sheets
+                                             (with timestamps)
 ```
 
 ### Pipeline Steps
@@ -100,6 +108,7 @@ Reddit API  →  Keyword Filter  →  Gemini AI  →  CSV Output
 3. **Score**: Gemini AI rates each lead 1-10 with HIGH/MEDIUM/LOW classification
 4. **Draft**: Generate public comment and DM drafts for high-signal leads (score ≥7)
 5. **Save**: Output to `data/leads.csv` with all details
+6. **Export** (optional): Sync to Google Sheets with timestamps for tracking
 
 ### Signal Classification
 
@@ -222,6 +231,7 @@ Load with: `launchctl load ~/Library/LaunchAgents/com.kaiwa.scout.plist`
 |---------|-------|------|-------|
 | Reddit | - | Free | 60 req/min rate limit |
 | Gemini | gemini-1.5-flash | ~$0.075/1M input tokens | Free tier: 1,500 req/day |
+| Google Sheets | - | Free | Requires service account |
 | Resend | - | Free tier: 100 emails/day | Optional |
 
 **Estimated monthly cost**: $2-5 for 100 posts/day with AI analysis.
@@ -243,6 +253,8 @@ kaiwa-reddit-scout/
 │   │   ├── gemini_client.py # Gemini REST API
 │   │   ├── signal_scorer.py # Lead scoring
 │   │   └── response_generator.py # Draft generation
+│   ├── output/
+│   │   └── sheets_client.py # Google Sheets export
 │   └── storage/
 │       ├── csv_storage.py   # CSV output
 │       └── models.py        # Data models
@@ -258,8 +270,9 @@ kaiwa-reddit-scout/
 |-------|----------|--------|
 | 1 | Reddit scraping + keyword filtering + CSV output | ✅ Complete |
 | 2 | Gemini AI analysis + signal scoring + response drafts | ✅ Complete |
-| 3 | Google Sheets + email notifications | 🔄 Planned |
-| 4 | Scheduled automation | 📝 Manual (cron) |
+| 3 | Google Sheets export with timestamps | ✅ Complete |
+| 4 | Email notifications (Resend) | ✅ Ready |
+| 5 | Scheduled automation | 📝 Manual (cron) |
 
 ## Usage Notes
 

@@ -57,6 +57,25 @@ class GeminiConfig:
 
 
 @dataclass
+class SheetsConfig:
+    """Google Sheets configuration."""
+    credentials_file: str
+    sheet_name: str
+
+    @classmethod
+    def from_env(cls) -> "SheetsConfig":
+        return cls(
+            credentials_file=os.getenv("GOOGLE_CREDENTIALS_FILE", "google_creds.json"),
+            sheet_name=os.getenv("GOOGLE_SHEET_NAME", "Kaiwa Leads Dashboard"),
+        )
+
+    def is_valid(self) -> bool:
+        """Check if credentials file exists."""
+        creds_path = PROJECT_ROOT / self.credentials_file
+        return creds_path.exists()
+
+
+@dataclass
 class AppConfig:
     """Application configuration."""
     log_level: str
@@ -75,6 +94,7 @@ class AppConfig:
 # Global config instances
 reddit_config = RedditConfig.from_env()
 gemini_config = GeminiConfig.from_env()
+sheets_config = SheetsConfig.from_env()
 app_config = AppConfig.from_env()
 
 
@@ -89,6 +109,9 @@ def print_config_status():
     print(f"Gemini API configured: {gemini_config.is_valid()}")
     print(f"  - Model: {gemini_config.model}")
     print(f"  - Signal threshold: {gemini_config.signal_threshold}")
+    print(f"Google Sheets configured: {sheets_config.is_valid()}")
+    print(f"  - Credentials: {sheets_config.credentials_file}")
+    print(f"  - Sheet name: {sheets_config.sheet_name}")
     print(f"Log level: {app_config.log_level}")
     print(f"Max posts per run: {app_config.max_posts_per_run}")
     print(f"Data directory: {app_config.data_dir}")

@@ -1,0 +1,276 @@
+"""
+Google Sheets client for storing leads.
+"""
+
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+import gspread
+from google.oauth2.service_account import Credentials
+
+from src.config.settings import sheets_config, PROJECT_ROOT
+from src.storage.models import Lead
+
+logger = logging.getLogger(__name__)
+
+# Scopes required for Google Sheets API
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
+
+# Sheet headers
+SHEET_HEADERS = [
+    "Timestamp",
+    "Subreddit",
+    "Author",
+    "Title",
+    "Post URL",
+    "DM URL",
+    "Matched Keywords",
+    "Language",
+    "Signal Score",
+    "Signal Type",
+    "Category",
+    "Public Draft",
+    "DM Draft",
+    "Status",
+]
+
+
+class SheetsClient:
+    """Client for writing leads to Google Sheets."""
+
+    def __init__(
+        self,
+        credentials_file: Optional[str] = None,
+        sheet_name: Optional[str] = None,
+    ):
+        """
+        Initialize Sheets client.
+
+        Args:
+            credentials_file: Path to Google service account JSON
+            sheet_name: Name of the spreadsheet to use
+        """
+        self.credentials_file = credentials_file or sheets_config.credentials_file
+        self.sheet_name = sheet_name or sheets_config.sheet_name
+        self._client = None
+        self._sheet = None
+
+    def _get_credentials_path(self) -> Path:
+        """Get full path to credentials file."""
+        path = Path(self.credentials_file)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        return path
+
+    def is_configured(self) -> bool:
+        """Check if Sheets is configured."""
+        return self._get_credentials_path().exists()
+
+    def _get_client(self):
+        """Lazy initialization of gspread client."""
+        if self._client is None:
+            creds_path = self._get_credentials_path()
+            if not creds_path.exists():
+                raise FileNotFoundError(
+                    f"Google credentials file not found: {creds_path}"
+                )
+
+            credentials = Credentials.from_service_account_file(
+                str(creds_path), scopes=SCOPES
+            )
+            self._client = gspread.authorize(credentials)
+
+        return self._client
+
+    def _get_or_create_sheet(self):
+        """Get existing sheet or create new one."""
+        if self._sheet is not None:
+            return self._sheet
+
+        client = self._get_client()
+
+        try:
+            # Try to open existing spreadsheet
+            self._sheet = client.open(self.sheet_name).sheet1
+            logger.info(f"Opened existing sheet: {self.sheet_name}")
+        except gspread.SpreadsheetNotFound:
+            # Create new spreadsheet
+            spreadsheet = client.create(self.sheet_name)
+            self._sheet = spreadsheet.sheet1
+
+            # Add headers
+            self._sheet.append_row(SHEET_HEADERS)
+
+            # Format header row (bold)
+            self._sheet.format("A1:N1", {"textFormat": {"bold": True}})
+
+            # Auto-resize columns
+            self._sheet.columns_auto_resize(0, len(SHEET_HEADERS) - 1)
+
+            logger.info(f"Created new sheet: {self.sheet_name}")
+
+            # Share with user (optional - you might want to add your email)
+            # spreadsheet.share('your-email@gmail.com', perm_type='user', role='writer')
+
+        return self._sheet
+
+    def _lead_to_row(self, lead: Lead) -> list:
+        """Convert a Lead to a sheet row."""
+        return [
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            lead.subreddit,
+            lead.author,
+            lead.title[:100],  # Truncate for readability
+            lead.post_url,
+            lead.message_url,
+            ", ".join(lead.matched_triggers[:5]),  # Limit triggers
+            lead.language_detected or "",
+            lead.signal_score or "",
+            lead.signal_type or "",
+            lead.category or "",
+            lead.public_draft or "",
+            lead.dm_draft or "",
+            lead.status,
+        ]
+
+    def get_existing_post_ids(self) -> set[str]:
+        """Get set of post IDs already in the sheet."""
+        if not self.is_configured():
+            return set()
+
+        try:
+            sheet = self._get_or_create_sheet()
+            # Get all Post URLs (column E)
+            post_urls = sheet.col_values(5)  # 1-indexed
+
+            post_ids = set()
+            for url in post_urls[1:]:  # Skip header
+                # Extract post ID from URL
+                # URL format: https://reddit.com/r/sub/comments/POST_ID/...
+                parts = url.split("/comments/")
+                if len(parts) > 1:
+                    post_id = parts[1].split("/")[0]
+                    post_ids.add(post_id)
+
+            return post_ids
+
+        except Exception as e:
+            logger.warning(f"Error getting existing posts from sheet: {e}")
+            return set()
+
+    def append_lead(self, lead: Lead) -> bool:
+        """
+        Append a single lead to the sheet.
+
+        Args:
+            lead: Lead to append
+
+        Returns:
+            True if appended, False if duplicate or error
+        """
+        if not self.is_configured():
+            logger.warning("Google Sheets not configured")
+            return False
+
+        try:
+            # Check for duplicates
+            existing_ids = self.get_existing_post_ids()
+            if lead.post_id in existing_ids:
+                logger.debug(f"Skipping duplicate in sheet: {lead.post_id}")
+                return False
+
+            sheet = self._get_or_create_sheet()
+            row = self._lead_to_row(lead)
+            sheet.append_row(row, value_input_option="USER_ENTERED")
+
+            logger.info(f"Added lead to sheet: u/{lead.author} ({lead.post_id})")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error appending to sheet: {e}")
+            return False
+
+    def append_leads(self, leads: list[Lead]) -> dict:
+        """
+        Append multiple leads to the sheet.
+
+        Args:
+            leads: List of leads to append
+
+        Returns:
+            Stats dict with saved/skipped counts
+        """
+        if not self.is_configured():
+            logger.warning("Google Sheets not configured - skipping sheet output")
+            return {"saved": 0, "skipped": len(leads)}
+
+        if not leads:
+            return {"saved": 0, "skipped": 0}
+
+        try:
+            # Get existing IDs once
+            existing_ids = self.get_existing_post_ids()
+
+            # Prepare rows to append
+            rows = []
+            saved = 0
+            skipped = 0
+
+            for lead in leads:
+                if lead.post_id in existing_ids:
+                    skipped += 1
+                    continue
+
+                rows.append(self._lead_to_row(lead))
+                existing_ids.add(lead.post_id)  # Track for this batch
+                saved += 1
+
+            # Batch append
+            if rows:
+                sheet = self._get_or_create_sheet()
+                sheet.append_rows(rows, value_input_option="USER_ENTERED")
+
+            logger.info(f"Added {saved} leads to sheet, skipped {skipped} duplicates")
+            return {"saved": saved, "skipped": skipped}
+
+        except Exception as e:
+            logger.error(f"Error batch appending to sheet: {e}")
+            return {"saved": 0, "skipped": len(leads)}
+
+    def get_sheet_url(self) -> Optional[str]:
+        """Get the URL of the spreadsheet."""
+        if not self.is_configured():
+            return None
+
+        try:
+            client = self._get_client()
+            spreadsheet = client.open(self.sheet_name)
+            return spreadsheet.url
+        except Exception as e:
+            logger.error(f"Error getting sheet URL: {e}")
+            return None
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
+    print("Testing Sheets Client")
+    print("=" * 50)
+
+    client = SheetsClient()
+    print(f"Configured: {client.is_configured()}")
+
+    if client.is_configured():
+        url = client.get_sheet_url()
+        print(f"Sheet URL: {url}")
+    else:
+        print("\nTo configure Google Sheets:")
+        print("1. Create a service account at console.cloud.google.com")
+        print("2. Enable Google Sheets API")
+        print("3. Download JSON credentials as 'google_creds.json'")
+        print("4. Place in project root directory")

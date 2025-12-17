@@ -3,6 +3,7 @@ Kaiwa Reddit Scout - Main Entry Point
 
 Phase 1: Scrape Reddit posts, filter by keywords, save to CSV.
 Phase 2: Analyze leads with Gemini AI, score signals, generate responses.
+Phase 3: Export to Google Sheets with timestamps.
 """
 
 import argparse
@@ -10,7 +11,7 @@ import logging
 import sys
 from datetime import datetime
 
-from src.config.settings import app_config, gemini_config, print_config_status
+from src.config.settings import app_config, gemini_config, sheets_config, print_config_status
 from src.config.languages import get_all_subreddits, LANGUAGES
 from src.scraper.reddit_client import get_reddit_client
 from src.scraper.keyword_filter import KeywordFilter
@@ -32,6 +33,7 @@ def run_scout(
     use_mock: bool = False,
     verbose: bool = False,
     analyze: bool = False,
+    use_sheets: bool = False,
 ) -> dict:
     """
     Run the Reddit scout pipeline.
@@ -42,6 +44,7 @@ def run_scout(
         use_mock: Use mock client for testing
         verbose: Print detailed output
         analyze: Run AI analysis with Gemini (Phase 2)
+        use_sheets: Export to Google Sheets (Phase 3)
 
     Returns:
         Dict with run statistics
@@ -109,6 +112,21 @@ def run_scout(
         save_result = {"saved": 0, "skipped": 0}
         logger.info("No leads to save")
 
+    # Phase 3: Export to Google Sheets
+    sheets_result = {"saved": 0, "skipped": 0}
+    sheet_url = None
+    if use_sheets and leads:
+        if sheets_config.is_valid():
+            logger.info("Exporting to Google Sheets...")
+            from src.output import SheetsClient
+            sheets_client = SheetsClient()
+            sheets_result = sheets_client.append_leads(leads)
+            sheet_url = sheets_client.get_sheet_url()
+            logger.info(f"Added {sheets_result['saved']} leads to sheet, skipped {sheets_result['skipped']} duplicates")
+        else:
+            logger.warning("Google Sheets not configured - skipping sheet export")
+            logger.warning("Add google_creds.json to project root to enable Sheets")
+
     # Print summary
     print("\n" + "=" * 60)
     print("SCOUT RUN COMPLETE")
@@ -122,6 +140,9 @@ def run_scout(
     print(f"  New saved:   {save_result['saved']}")
     print(f"  Duplicates:  {save_result['skipped']}")
     print(f"  CSV file:    {storage.leads_file}")
+    if use_sheets and sheet_url:
+        print(f"  Sheet:       {sheet_url}")
+        print(f"  Sheet saved: {sheets_result['saved']}")
     print("=" * 60)
 
     # Show new leads
@@ -186,6 +207,11 @@ def main():
         help="Run AI analysis with Gemini (Phase 2)",
     )
     parser.add_argument(
+        "--sheets",
+        action="store_true",
+        help="Export to Google Sheets (Phase 3)",
+    )
+    parser.add_argument(
         "--config",
         "-c",
         action="store_true",
@@ -228,6 +254,7 @@ def main():
             use_mock=args.mock,
             verbose=args.verbose,
             analyze=args.analyze,
+            use_sheets=args.sheets,
         )
     except KeyboardInterrupt:
         print("\n\nInterrupted by user")

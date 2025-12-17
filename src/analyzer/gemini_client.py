@@ -5,9 +5,17 @@ Uses REST API directly to avoid cryptography dependency issues.
 
 import json
 import logging
+import ssl
 from typing import Optional
 import urllib.request
 import urllib.error
+
+# Try to use certifi for SSL certificates (fixes macOS issues)
+try:
+    import certifi
+    SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    SSL_CONTEXT = ssl.create_default_context()
 
 from src.config.settings import gemini_config
 
@@ -71,7 +79,7 @@ class GeminiClient:
                 method="POST"
             )
 
-            with urllib.request.urlopen(req, timeout=30) as response:
+            with urllib.request.urlopen(req, timeout=30, context=SSL_CONTEXT) as response:
                 result = json.loads(response.read().decode('utf-8'))
 
             # Extract text from response

@@ -2,6 +2,7 @@
 praw>=7.7.0
 
 # Google Gemini (Phase 2) - uses REST API directly, no SDK needed
+certifi>=2023.0.0  # SSL certificates for macOS
 
 # Google Sheets (Phase 3)
 gspread>=5.10.0

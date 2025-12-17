@@ -5,16 +5,41 @@ HIGH-SIGNAL triggers: Indicate someone who needs conversation practice
 LOW-SIGNAL exclusions: Filter out test-focused, academic, or off-topic posts
 """
 
+# Supported languages for keyword generation
+SUPPORTED_LANGUAGES = [
+    "japanese", "spanish", "french", "german", "italian", "portuguese",
+    "korean", "chinese", "mandarin", "hindi", "russian", "vietnamese",
+    "dutch", "filipino", "tagalog", "indonesian", "turkish",
+]
+
 # High-signal trigger keywords
 # Posts containing these indicate potential leads for conversation practice
 TRIGGER_KEYWORDS: list[str] = [
+    # === Language-specific keywords (generated) ===
+    # "speak X" pattern
+    *[f"speak {lang}" for lang in SUPPORTED_LANGUAGES],
+    # "learning X" pattern
+    *[f"learning {lang}" for lang in SUPPORTED_LANGUAGES],
+    # "best way to learn X" pattern
+    *[f"best way to learn {lang}" for lang in SUPPORTED_LANGUAGES],
+    # "fluency in X" pattern
+    *[f"fluency in {lang}" for lang in SUPPORTED_LANGUAGES],
+    # "practice speaking X" pattern
+    *[f"practice speaking {lang}" for lang in SUPPORTED_LANGUAGES],
+    # "become conversational in X" pattern
+    *[f"become conversational in {lang}" for lang in SUPPORTED_LANGUAGES],
+    # "conversational X" pattern
+    *[f"conversational {lang}" for lang in SUPPORTED_LANGUAGES],
+
     # === Speaking anxiety / emotional ===
     "afraid to speak",
     "scared to speak",
     "scared to talk",
     "nervous to speak",
     "anxiety when speaking",
+    "speaking anxiety",
     "freeze up",
+    "freeze up speaking",
     "freezing up",
     "blank out",
     "mind goes blank",
@@ -55,6 +80,8 @@ TRIGGER_KEYWORDS: list[str] = [
     "duolingo isn't working",
     "duolingo doesn't work",
     "duolingo not helping",
+    "quit duolingo",
+    "beyond duolingo",
     "apps don't help",
     "apps aren't helping",
     "textbook isn't helping",
@@ -67,6 +94,15 @@ TRIGGER_KEYWORDS: list[str] = [
     "been learning for",
     "learning for months",
     "learning for years",
+
+    # === Heritage speakers / family ===
+    "heritage speaker",
+    "lost my language",
+    "can't speak to relatives",
+    "in-laws don't speak",
+    "bilingual couple",
+    "language barrier relationship",
+    "conversational fluency",
 
     # === Specific needs ===
     "conversation practice",

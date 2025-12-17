@@ -10,7 +10,7 @@ google-auth>=2.22.0
 google-auth-oauthlib>=1.0.0
 
 # Email (Phase 3)
-# Uses built-in smtplib
+resend>=2.0.0
 
 # Environment & Config
 python-dotenv>=1.0.0

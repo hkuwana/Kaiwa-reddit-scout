@@ -15,7 +15,6 @@ from src.config.languages import get_all_subreddits, LANGUAGES
 from src.scraper.reddit_client import get_reddit_client
 from src.scraper.keyword_filter import KeywordFilter
 from src.storage.csv_storage import CSVStorage
-from src.analyzer import SignalScorer, ResponseGenerator
 
 
 def setup_logging(level: str = "INFO"):
@@ -79,6 +78,9 @@ def run_scout(
     if analyze and leads:
         if gemini_config.is_valid():
             logger.info("Running AI analysis with Gemini...")
+
+            # Lazy import to avoid loading Gemini when not needed
+            from src.analyzer import SignalScorer, ResponseGenerator
 
             # Score leads
             scorer = SignalScorer()

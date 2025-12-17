@@ -47,7 +47,7 @@ class GeminiConfig:
     def from_env(cls) -> "GeminiConfig":
         return cls(
             api_key=os.getenv("GEMINI_API_KEY", ""),
-            model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
+            model=os.getenv("GEMINI_MODEL", "gemma-3-27b-it"),
             signal_threshold=int(os.getenv("SIGNAL_THRESHOLD", "7")),
         )
 

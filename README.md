@@ -230,7 +230,7 @@ Load with: `launchctl load ~/Library/LaunchAgents/com.kaiwa.scout.plist`
 | Service | Model | Cost | Notes |
 |---------|-------|------|-------|
 | Reddit | - | Free | 60 req/min rate limit |
-| Gemini | gemini-1.5-flash | ~$0.075/1M input tokens | Free tier: 1,500 req/day |
+| Google AI | gemma-3-27b-it | Free tier available | 1,500 req/day free |
 | Google Sheets | - | Free | Requires service account |
 | Resend | - | Free tier: 100 emails/day | Optional |
 

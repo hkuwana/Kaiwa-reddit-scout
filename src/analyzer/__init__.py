@@ -7,13 +7,12 @@ Phase 2 components:
 - ResponseGenerator: Generate public comment and DM drafts
 """
 
-from src.analyzer.gemini_client import GeminiClient, gemini_client
+from src.analyzer.gemini_client import GeminiClient
 from src.analyzer.signal_scorer import SignalScorer
 from src.analyzer.response_generator import ResponseGenerator
 
 __all__ = [
     "GeminiClient",
-    "gemini_client",
     "SignalScorer",
     "ResponseGenerator",
 ]

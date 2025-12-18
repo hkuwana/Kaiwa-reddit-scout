@@ -208,95 +208,52 @@ python3 -m src.main --analyze -s languagelearning,LearnJapanese --limit 30
 
 ---
 
-## Run Automatically (Background Scheduling)
+## Run Automatically (Background)
 
-### Option 1: Cron (Linux/Mac) - Recommended
+### Quick Start: Use the Runner Script
 
-Run every hour:
+The easiest way to run the scout continuously:
+
+```bash
+# Run once (test your setup)
+./run_scout.sh
+
+# Run continuously every hour
+./run_scout.sh loop
+
+# Run in background (survives terminal close)
+./run_scout.sh bg
+```
+
+**To stop the background process:**
+```bash
+pkill -f 'run_scout.sh loop'
+```
+
+**To check logs:**
+```bash
+tail -f logs/scout.log
+```
+
+### Alternative: Cron (Linux/Mac)
+
+For more control over scheduling:
 
 ```bash
 # Open crontab
 crontab -e
 
 # Add this line (runs every hour)
-0 * * * * cd /path/to/Kaiwa-reddit-scout && /path/to/venv/bin/python -m src.main -a -l 100 >> logs/scout.log 2>&1
-```
-
-Create the logs directory first:
-```bash
-mkdir -p logs
+0 * * * * cd /path/to/Kaiwa-reddit-scout && ./run_scout.sh >> logs/scout.log 2>&1
 ```
 
 **Common schedules:**
-```bash
-# Every hour
-0 * * * * ...
-
-# Every 6 hours
-0 */6 * * * ...
-
-# Every day at 9am
-0 9 * * * ...
-
-# Every 30 minutes
-*/30 * * * * ...
-```
-
-### Option 2: launchd (Mac - Runs Even When Logged Out)
-
-1. Create the file `~/Library/LaunchAgents/com.kaiwa.scout.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.kaiwa.scout</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/path/to/venv/bin/python</string>
-        <string>-m</string>
-        <string>src.main</string>
-        <string>-a</string>
-        <string>--sheets</string>
-        <string>-l</string>
-        <string>100</string>
-    </array>
-    <key>WorkingDirectory</key>
-    <string>/path/to/Kaiwa-reddit-scout</string>
-    <key>StartInterval</key>
-    <integer>3600</integer>
-    <key>StandardOutPath</key>
-    <string>/path/to/Kaiwa-reddit-scout/logs/scout.log</string>
-    <key>StandardErrorPath</key>
-    <string>/path/to/Kaiwa-reddit-scout/logs/scout-error.log</string>
-</dict>
-</plist>
-```
-
-2. Load it:
-```bash
-launchctl load ~/Library/LaunchAgents/com.kaiwa.scout.plist
-```
-
-3. To stop:
-```bash
-launchctl unload ~/Library/LaunchAgents/com.kaiwa.scout.plist
-```
-
-### Option 3: Run in Background with nohup (Quick & Dirty)
-
-```bash
-# Run once per hour in background
-while true; do
-  python3 -m src.main -a --sheets -l 100
-  sleep 3600
-done &
-
-# Or with nohup (survives terminal close)
-nohup bash -c 'while true; do python3 -m src.main -a --sheets -l 100; sleep 3600; done' > logs/scout.log 2>&1 &
-```
+| Schedule | Cron Expression |
+|----------|-----------------|
+| Every hour | `0 * * * *` |
+| Every 6 hours | `0 */6 * * *` |
+| Every day at 9am | `0 9 * * *` |
+| Every 30 minutes | `*/30 * * * *` |
 
 ---
 

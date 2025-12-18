@@ -46,12 +46,21 @@ class GeminiClient:
         """Check if the client is properly configured."""
         return bool(self.api_key)
 
-    def _make_request(self, prompt: str, max_tokens: int = 1024, temperature: float = 0.7, json_mode: bool = False) -> Optional[str]:
-        """Make a request to Gemini API."""
+    def _make_request(self, prompt: str, max_tokens: int = 1024, temperature: float = 0.7, json_mode: bool = False, model_override: Optional[str] = None) -> Optional[str]:
+        """Make a request to Gemini API.
+
+        Args:
+            prompt: The prompt to send
+            max_tokens: Maximum tokens in response
+            temperature: Response temperature (0-1)
+            json_mode: Whether to request JSON response
+            model_override: Optional model to use instead of default
+        """
         if not self.is_configured():
             return None
 
-        url = GEMINI_API_URL.format(model=self.model_name) + f"?key={self.api_key}"
+        model = model_override or self.model_name
+        url = GEMINI_API_URL.format(model=model) + f"?key={self.api_key}"
 
         payload = {
             "contents": [
@@ -68,7 +77,7 @@ class GeminiClient:
         }
 
         # JSON mode only supported by Gemini models, not Gemma
-        if json_mode and self.model_name.startswith("gemini"):
+        if json_mode and model.startswith("gemini"):
             payload["generationConfig"]["responseMimeType"] = "application/json"
 
         try:
@@ -101,31 +110,33 @@ class GeminiClient:
             logger.error(f"Gemini API error: {e}")
             return None
 
-    def generate(self, prompt: str, max_tokens: int = 1024) -> Optional[str]:
+    def generate(self, prompt: str, max_tokens: int = 1024, model: Optional[str] = None) -> Optional[str]:
         """
         Generate text using Gemini.
 
         Args:
             prompt: The prompt to send
             max_tokens: Maximum tokens in response
+            model: Optional model override (e.g., use response_model for better quality)
 
         Returns:
             Generated text or None on error
         """
-        return self._make_request(prompt, max_tokens, temperature=0.7)
+        return self._make_request(prompt, max_tokens, temperature=0.7, model_override=model)
 
-    def generate_json(self, prompt: str, max_tokens: int = 1024) -> Optional[str]:
+    def generate_json(self, prompt: str, max_tokens: int = 1024, model: Optional[str] = None) -> Optional[str]:
         """
         Generate JSON response using Gemini.
 
         Args:
             prompt: The prompt (should ask for JSON output)
             max_tokens: Maximum tokens in response
+            model: Optional model override
 
         Returns:
             Generated JSON string or None on error
         """
-        response = self._make_request(prompt, max_tokens, temperature=0.3, json_mode=True)
+        response = self._make_request(prompt, max_tokens, temperature=0.3, json_mode=True, model_override=model)
         if not response:
             return None
 

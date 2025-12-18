@@ -40,15 +40,19 @@ class RedditConfig:
 class GeminiConfig:
     """Gemini API configuration."""
     api_key: str
-    model: str
+    model: str  # Model for scoring/filtering (can use free Gemma)
+    response_model: str  # Model for generating comments (use better Gemini model)
     signal_threshold: int
+    require_comment_worthy: bool  # Whether to evaluate comment-worthiness before generating
 
     @classmethod
     def from_env(cls) -> "GeminiConfig":
         return cls(
             api_key=os.getenv("GEMINI_API_KEY", ""),
             model=os.getenv("GEMINI_MODEL", "gemma-3-27b-it"),
+            response_model=os.getenv("RESPONSE_MODEL", "gemini-2.0-flash-lite"),
             signal_threshold=int(os.getenv("SIGNAL_THRESHOLD", "7")),
+            require_comment_worthy=os.getenv("REQUIRE_COMMENT_WORTHY", "true").lower() == "true",
         )
 
     def is_valid(self) -> bool:
@@ -121,8 +125,10 @@ def print_config_status():
     print(f"  - Client ID: {'***' + reddit_config.client_id[-4:] if len(reddit_config.client_id) > 4 else '(not set)'}")
     print(f"  - Username: {reddit_config.username or '(not set)'}")
     print(f"Gemini API configured: {gemini_config.is_valid()}")
-    print(f"  - Model: {gemini_config.model}")
+    print(f"  - Scoring model: {gemini_config.model}")
+    print(f"  - Response model: {gemini_config.response_model}")
     print(f"  - Signal threshold: {gemini_config.signal_threshold}")
+    print(f"  - Require comment-worthy: {gemini_config.require_comment_worthy}")
     print(f"Google Sheets configured: {sheets_config.is_valid()}")
     print(f"  - Credentials: {'(inline JSON)' if sheets_config.has_inline_json() else sheets_config.credentials_file}")
     print(f"  - Sheet name: {sheets_config.sheet_name}")

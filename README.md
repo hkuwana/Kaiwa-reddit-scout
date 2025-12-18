@@ -42,11 +42,22 @@ nano .env  # or use your preferred editor
 | Service | Variables | Get it at |
 |---------|-----------|-----------|
 | Reddit API | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD` | [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) |
-| Google AI | `GEMINI_API_KEY`, `GEMINI_MODEL` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| Google AI | `GEMINI_API_KEY`, `GEMINI_MODEL`, `RESPONSE_MODEL` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | Google Sheets (optional) | `GOOGLE_CREDENTIALS_JSON`, `GOOGLE_SHEET_NAME`, `GOOGLE_FOLDER_ID` | [console.cloud.google.com](https://console.cloud.google.com/) |
 | Resend (optional) | `RESEND_API_KEY`, `EMAIL_TO` | [resend.com/api-keys](https://resend.com/api-keys) |
 
-**Supported AI models**: `gemini-1.5-flash`, `gemini-1.5-pro`, `gemma-3-27b-it` (set via `GEMINI_MODEL`)
+**AI Model Configuration**:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `GEMINI_MODEL` | `gemma-3-27b-it` | Model for scoring/filtering (use cheaper model) |
+| `RESPONSE_MODEL` | `gemini-2.0-flash-lite` | Model for generating comments (use higher quality model) |
+| `SIGNAL_THRESHOLD` | `7` | Minimum score for high-signal leads |
+| `REQUIRE_COMMENT_WORTHY` | `true` | Evaluate if posts are worth commenting on before generating drafts |
+
+**Recommended model configurations**:
+- **Cost-optimized**: `GEMINI_MODEL=gemma-3-27b-it` + `RESPONSE_MODEL=gemini-2.0-flash-lite`
+- **Quality-focused**: `GEMINI_MODEL=gemini-1.5-flash` + `RESPONSE_MODEL=gemini-1.5-pro`
 
 ### 3. Test your setup
 
@@ -107,10 +118,11 @@ Reddit API  →  Keyword Filter  →  Google AI   →  CSV Output
 
 1. **Fetch**: Get new posts from 36 language learning subreddits
 2. **Filter**: Match against 208 trigger keywords, exclude 68 low-signal patterns
-3. **Score**: AI rates each lead 1-10 with HIGH/MEDIUM/LOW classification
-4. **Draft**: Generate public comment and DM drafts for high-signal leads (score ≥7)
-5. **Save**: Output to `data/leads.csv` with all details
-6. **Export** (optional): Create dated Google Sheet (e.g., `Kaiwa-Scout-2025-12-18`)
+3. **Score**: AI rates each lead 1-10 with HIGH/MEDIUM/LOW classification (using `GEMINI_MODEL`)
+4. **Evaluate**: Check if high-signal leads are worth commenting on (skip generic/venting posts)
+5. **Draft**: Generate public comment and DM drafts only for worthy leads (using `RESPONSE_MODEL`)
+6. **Save**: Output to `data/leads.csv` with all details
+7. **Export** (optional): Create dated Google Sheet (e.g., `Kaiwa-Scout-2025-12-18`)
 
 ### Signal Classification
 
@@ -146,8 +158,10 @@ Reddit API  →  Keyword Filter  →  Google AI   →  CSV Output
 | `signal_score` | AI score (1-10) |
 | `signal_type` | HIGH/MEDIUM/LOW |
 | `category` | Problem category |
-| `public_draft` | Suggested public comment |
-| `dm_draft` | Suggested DM message |
+| `comment_worthy` | Whether this post is worth commenting on (yes/no) |
+| `comment_worthy_reason` | Reason for the worthiness decision |
+| `public_draft` | Suggested public comment (only for worthy leads) |
+| `dm_draft` | Suggested DM message (only for worthy leads) |
 
 ## Supported Languages
 

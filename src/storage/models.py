@@ -68,6 +68,8 @@ class Lead:
     signal_score: Optional[int] = None
     signal_type: Optional[str] = None  # HIGH, MEDIUM, LOW
     category: Optional[str] = None
+    comment_worthy: Optional[bool] = None  # Whether this lead is worth commenting on
+    comment_worthy_reason: Optional[str] = None  # Why or why not
     public_draft: Optional[str] = None
     dm_draft: Optional[str] = None
 
@@ -126,6 +128,8 @@ class Lead:
             "signal_score": self.signal_score or "",
             "signal_type": self.signal_type or "",
             "category": self.category or "",
+            "comment_worthy": "" if self.comment_worthy is None else ("yes" if self.comment_worthy else "no"),
+            "comment_worthy_reason": self.comment_worthy_reason or "",
             "public_draft": self.public_draft or "",
             "dm_draft": self.dm_draft or "",
         }

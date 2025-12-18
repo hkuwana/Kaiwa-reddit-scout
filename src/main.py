@@ -78,9 +78,12 @@ def run_scout(
 
     # Phase 2: AI Analysis with Gemini
     high_signal_count = 0
+    skipped_unworthy_count = 0
     if analyze and leads:
         if gemini_config.is_valid():
-            logger.info("Running AI analysis with Gemini...")
+            logger.info("Running AI analysis...")
+            logger.info(f"  Scoring model: {gemini_config.model}")
+            logger.info(f"  Response model: {gemini_config.response_model}")
 
             # Lazy import to avoid loading Gemini when not needed
             from src.analyzer import SignalScorer, ResponseGenerator
@@ -96,9 +99,16 @@ def run_scout(
 
             # Generate responses only for high-signal leads
             if high_signal_leads:
-                logger.info("Generating response drafts for high-signal leads...")
+                if gemini_config.require_comment_worthy:
+                    logger.info("Evaluating comment-worthiness and generating drafts...")
+                else:
+                    logger.info("Generating response drafts for high-signal leads...")
+
                 generator = ResponseGenerator()
-                generator.generate_responses_batch(high_signal_leads)
+                _, skipped_unworthy_count = generator.generate_responses_batch(high_signal_leads)
+
+                if skipped_unworthy_count > 0:
+                    logger.info(f"Skipped {skipped_unworthy_count} leads as not comment-worthy")
         else:
             logger.warning("Gemini API not configured - skipping AI analysis")
             logger.warning("Set GEMINI_API_KEY in .env to enable analysis")
@@ -137,6 +147,10 @@ def run_scout(
     print(f"  Leads found: {len(leads)}")
     if analyze:
         print(f"  High-signal: {high_signal_count}")
+        if gemini_config.require_comment_worthy:
+            comment_worthy_count = high_signal_count - skipped_unworthy_count
+            print(f"  Worth commenting: {comment_worthy_count}")
+            print(f"  Skipped (not worthy): {skipped_unworthy_count}")
     print(f"  New saved:   {save_result['saved']}")
     print(f"  Duplicates:  {save_result['skipped']}")
     print(f"  CSV file:    {storage.leads_file}")
@@ -163,6 +177,8 @@ def run_scout(
         "posts_fetched": len(posts),
         "leads_found": len(leads),
         "high_signal_leads": high_signal_count,
+        "comment_worthy_leads": high_signal_count - skipped_unworthy_count,
+        "skipped_unworthy": skipped_unworthy_count,
         "leads_saved": save_result["saved"],
         "leads_skipped": save_result["skipped"],
         "filter_stats": keyword_filter.get_stats(),

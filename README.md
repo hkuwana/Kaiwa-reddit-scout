@@ -1,205 +1,250 @@
 # Kaiwa Reddit Scout
 
-A modular Python pipeline to discover high-signal language learning leads on Reddit. Monitor subreddits for specific keywords, filter out noise, and surface actionable leads for manual outreach.
+A Python tool that finds language learners on Reddit who need help with speaking practice, scores them with AI, and generates personalized comment drafts.
 
-## Features
+## What It Does
 
-- **Multi-language support**: Japanese, Korean, Chinese, Spanish, French, German, and 10+ more languages
-- **Smart filtering**: 208 trigger keywords catch high-signal posts; exclusion keywords filter out noise
-- **AI-powered analysis**: Google Gemini/Gemma scores leads (1-10) and drafts personalized responses
-- **Batch processing**: Efficient API usage with batch scoring to reduce costs
-- **Flexible output**: Local CSV or auto-dated Google Sheets (e.g., `Kaiwa-Scout-2025-12-18`)
-- **Local execution**: Run manually or schedule with cron
+1. **Scrapes** Reddit for posts about language learning struggles
+2. **Filters** using 208 trigger keywords (speaking anxiety, practice gaps, etc.)
+3. **Scores** each lead 1-10 using AI (Gemma - free)
+4. **Evaluates** if the post is worth commenting on
+5. **Generates** natural Reddit comments and DM drafts (Gemini - better quality)
+6. **Saves** to CSV and Google Sheets
 
-## Quick Start
+---
 
-### 1. Clone and setup
+## Prerequisites
+
+Before starting, you'll need accounts for:
+
+| Service | What For | Sign Up |
+|---------|----------|---------|
+| Reddit | API access to read posts | [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) |
+| Google AI Studio | Gemini/Gemma API for AI analysis | [aistudio.google.com](https://aistudio.google.com/apikey) |
+| Google Cloud (optional) | Sheets export | [console.cloud.google.com](https://console.cloud.google.com/) |
+
+**System requirements:**
+- Python 3.10+
+- pip (Python package manager)
+
+---
+
+## Setup (Step by Step)
+
+### Step 1: Clone the Repository
 
 ```bash
 git clone https://github.com/hkuwana/Kaiwa-reddit-scout.git
 cd Kaiwa-reddit-scout
+```
 
-# Create virtual environment
+### Step 2: Create Virtual Environment
+
+```bash
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-### 2. Configure environment
+### Step 3: Create Your `.env` File
 
 ```bash
-# Copy example env file
 cp .env.example .env
-
-# Edit with your credentials
-nano .env  # or use your preferred editor
 ```
 
-**Required credentials**:
+Now open `.env` in your editor and fill in each section:
 
-| Service | Variables | Get it at |
-|---------|-----------|-----------|
-| Reddit API | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD` | [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) |
-| Google AI | `GEMINI_API_KEY`, `GEMINI_MODEL` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
-| Google Sheets (optional) | `GOOGLE_CREDENTIALS_JSON`, `GOOGLE_SHEET_NAME`, `GOOGLE_FOLDER_ID` | [console.cloud.google.com](https://console.cloud.google.com/) |
-| Resend (optional) | `RESEND_API_KEY`, `EMAIL_TO` | [resend.com/api-keys](https://resend.com/api-keys) |
+---
 
-**Supported AI models**: `gemini-1.5-flash`, `gemini-1.5-pro`, `gemma-3-27b-it` (set via `GEMINI_MODEL`)
+### Step 4: Get Reddit API Credentials
 
-### 3. Test your setup
+1. Go to [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
+2. Click **"create another app..."** at the bottom
+3. Fill in:
+   - Name: `KaiwaScout` (or anything)
+   - Type: Select **"script"**
+   - Redirect URI: `http://localhost:8080`
+4. Click **Create app**
+5. Copy the credentials to your `.env`:
 
 ```bash
-# Test all APIs
+REDDIT_CLIENT_ID=abc123xyz        # Under "personal use script"
+REDDIT_CLIENT_SECRET=secret123    # The "secret" field
+REDDIT_USERNAME=your_username
+REDDIT_PASSWORD=your_password
+```
+
+---
+
+### Step 5: Get Google AI (Gemini) API Key
+
+1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+2. Click **"Create API Key"**
+3. Copy the key to your `.env`:
+
+```bash
+GEMINI_API_KEY=your-api-key-here
+GEMINI_MODEL=gemma-3-27b-it           # Free model for scoring
+RESPONSE_MODEL=gemini-2.0-flash       # Better model for comments
+```
+
+**Available models:**
+| Model | Cost | Best For |
+|-------|------|----------|
+| `gemma-3-27b-it` | Free | Scoring, filtering |
+| `gemini-2.0-flash` | Cheap | Comment generation |
+| `gemini-1.5-pro` | More expensive | Highest quality |
+
+---
+
+### Step 6: (Optional) Set Up Google Sheets
+
+This lets you export leads to a Google Sheet automatically.
+
+#### 6a. Create a Service Account
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com/)
+2. Create a new project (or select existing)
+3. Enable these APIs:
+   - [Google Sheets API](https://console.cloud.google.com/apis/library/sheets.googleapis.com)
+   - [Google Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com)
+4. Go to **IAM & Admin → Service Accounts**
+5. Click **Create Service Account**
+6. Name it `kaiwa-scout` and click **Create**
+7. Skip the optional steps, click **Done**
+8. Click on your new service account
+9. Go to **Keys** tab → **Add Key** → **Create new key** → **JSON**
+10. Download the JSON file
+
+#### 6b. Add Credentials to `.env`
+
+Open the downloaded JSON and copy its contents:
+
+```bash
+GOOGLE_CREDENTIALS_JSON={"type": "service_account", "project_id": "...", ...}
+GOOGLE_SHEET_NAME=Kaiwa-Scout
+```
+
+#### 6c. (Optional) Domain-Wide Delegation
+
+If you want sheets created in YOUR Drive (not the service account's):
+
+1. In Cloud Console, click on your service account
+2. Expand **Advanced settings** and copy the **Client ID**
+3. Go to [admin.google.com](https://admin.google.com) → Security → API Controls → Domain-wide Delegation
+4. Click **Add new**
+5. Enter:
+   - Client ID: (from step 2)
+   - Scopes: `https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/drive`
+6. Add to your `.env`:
+
+```bash
+GOOGLE_IMPERSONATE_EMAIL=your-email@yourdomain.com
+```
+
+---
+
+## Test Your Setup
+
+### Test All APIs
+
+```bash
 python3 test_apis.py
-
-# Test individual APIs
-python3 test_apis.py --gemini
-python3 test_apis.py --reddit
-python3 test_apis.py --sheets
-python3 test_apis.py --resend
 ```
 
-### 4. Run the scout
+### Test Individual Components
 
 ```bash
-# Basic run (scrape + filter only)
+# Test Reddit connection
+python3 test_apis.py --reddit
+
+# Test Gemini AI
+python3 test_apis.py --gemini
+
+# Test Google Sheets
+python3 test_apis.py --sheets
+```
+
+### Run with Mock Data (No API needed)
+
+```bash
+python3 -m src.main --mock --analyze --limit 5 -v
+```
+
+---
+
+## Usage
+
+### Basic Commands
+
+```bash
+# Scrape and filter only (no AI)
 python3 -m src.main --limit 50
 
-# With AI analysis (scoring + response drafts)
+# With AI analysis (scoring + comments)
 python3 -m src.main --analyze --limit 50
 
-# Export to Google Sheets with timestamps
+# With Google Sheets export
 python3 -m src.main --analyze --sheets --limit 50
 
-# Full verbose output
-python3 -m src.main -a -v -l 50
+# Verbose output
+python3 -m src.main --analyze --limit 50 -v
 
 # Specific subreddits only
-python3 -m src.main -a -s languagelearning,LearnJapanese -l 30
+python3 -m src.main --analyze -s languagelearning,LearnJapanese --limit 30
 ```
 
-## CLI Options
+### CLI Options
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--analyze` | `-a` | Enable Gemini AI analysis (scoring + drafts) |
-| `--sheets` | | Export to Google Sheets with timestamps |
+| `--analyze` | `-a` | Enable AI scoring and comment generation |
+| `--sheets` | | Export to Google Sheets |
 | `--verbose` | `-v` | Show detailed output |
 | `--limit N` | `-l N` | Max posts to fetch (default: 100) |
-| `--subreddits X,Y` | `-s X,Y` | Specific subreddits (default: all 36) |
-| `--mock` | `-m` | Use mock data (for testing) |
-| `--config` | `-c` | Show configuration status |
-| `--languages` | | List supported languages |
+| `--subreddits X,Y` | `-s X,Y` | Specific subreddits |
+| `--mock` | `-m` | Use mock data for testing |
+| `--config` | `-c` | Show current configuration |
 
-## How It Works
+---
 
-```
-Reddit API  →  Keyword Filter  →  Google AI   →  CSV Output
-   (PRAW)       (208 triggers)   (Gemini/Gemma)  (leads.csv)
-                                   (Scoring)         ↓
-                                   (Drafts)    Google Sheets
-                                             (auto-dated daily)
-```
+## Run Automatically (Background Scheduling)
 
-### Pipeline Steps
+### Option 1: Cron (Linux/Mac) - Recommended
 
-1. **Fetch**: Get new posts from 36 language learning subreddits
-2. **Filter**: Match against 208 trigger keywords, exclude 68 low-signal patterns
-3. **Score**: AI rates each lead 1-10 with HIGH/MEDIUM/LOW classification
-4. **Draft**: Generate public comment and DM drafts for high-signal leads (score ≥7)
-5. **Save**: Output to `data/leads.csv` with all details
-6. **Export** (optional): Create dated Google Sheet (e.g., `Kaiwa-Scout-2025-12-18`)
-
-### Signal Classification
-
-| Score | Type | Description |
-|-------|------|-------------|
-| 8-10 | HIGH | Speaking anxiety, actively seeking solutions |
-| 5-7 | MEDIUM | Related challenges, not primary focus |
-| 1-4 | LOW | Unlikely to benefit from speaking practice |
-
-### Categories
-
-- **Speaking Anxiety** - Fear of speaking, nervousness
-- **Practice Gap** - Lacks conversation partners
-- **Immersion Prep** - Moving abroad, meeting in-laws
-- **Plateau Frustration** - Stuck at a level
-- **App Fatigue** - Frustrated with Duolingo etc.
-- **General Learning** - General discussion
-
-## Output Format
-
-### CSV Columns
-
-| Column | Description |
-|--------|-------------|
-| `scraped_at` | When the post was found |
-| `subreddit` | Source subreddit |
-| `author` | Reddit username |
-| `title` | Post title |
-| `post_url` | Direct link to post |
-| `message_url` | Link to DM the user |
-| `matched_triggers` | Keywords that matched |
-| `language` | Detected target language |
-| `signal_score` | AI score (1-10) |
-| `signal_type` | HIGH/MEDIUM/LOW |
-| `category` | Problem category |
-| `public_draft` | Suggested public comment |
-| `dm_draft` | Suggested DM message |
-
-## Supported Languages
-
-Japanese, Spanish, French, German, Italian, Portuguese, Korean, Chinese, Mandarin, Hindi, Russian, Vietnamese, Dutch, Filipino, Tagalog, Indonesian, Turkish
-
-**Monitored subreddits**: 36 language learning communities including r/languagelearning, r/LearnJapanese, r/learnspanish, r/French, r/German, r/Korean, and more.
-
-## Keyword Strategy
-
-### Trigger Keywords (208 total)
-
-**Language-specific patterns**:
-- `speak [language]` - "speak japanese", "speak spanish"
-- `learning [language]` - "learning korean", "learning french"
-- `practice speaking [language]`
-- `conversational [language]`
-- `fluency in [language]`
-
-**Emotional triggers**:
-- "afraid to speak", "scared to talk", "freeze up"
-- "frustrated", "overwhelmed", "giving up"
-
-**Life events**:
-- "moving to", "in-laws", "job interview"
-- "deadline", "before i move"
-
-**App frustration**:
-- "duolingo isn't working", "quit duolingo"
-- "still can't speak", "years of studying"
-
-### Exclusion Keywords (68 total)
-
-- Tests: JLPT, HSK, TOPIK, N1-N5
-- Academic: homework, exam, textbook
-- Media: anime, manga, kdrama
-- Translation requests
-
-## Scheduling (Local)
-
-### Using cron (Linux/Mac)
+Run every hour:
 
 ```bash
-# Edit crontab
+# Open crontab
 crontab -e
 
-# Run every 6 hours
-0 */6 * * * cd /path/to/Kaiwa-reddit-scout && /path/to/venv/bin/python -m src.main -a -l 100 >> logs/scout.log 2>&1
+# Add this line (runs every hour)
+0 * * * * cd /path/to/Kaiwa-reddit-scout && /path/to/venv/bin/python -m src.main -a -l 100 >> logs/scout.log 2>&1
 ```
 
-### Using launchd (Mac)
+Create the logs directory first:
+```bash
+mkdir -p logs
+```
 
-Create `~/Library/LaunchAgents/com.kaiwa.scout.plist`:
+**Common schedules:**
+```bash
+# Every hour
+0 * * * * ...
+
+# Every 6 hours
+0 */6 * * * ...
+
+# Every day at 9am
+0 9 * * * ...
+
+# Every 30 minutes
+*/30 * * * * ...
+```
+
+### Option 2: launchd (Mac - Runs Even When Logged Out)
+
+1. Create the file `~/Library/LaunchAgents/com.kaiwa.scout.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -214,86 +259,157 @@ Create `~/Library/LaunchAgents/com.kaiwa.scout.plist`:
         <string>-m</string>
         <string>src.main</string>
         <string>-a</string>
+        <string>--sheets</string>
         <string>-l</string>
         <string>100</string>
     </array>
     <key>WorkingDirectory</key>
     <string>/path/to/Kaiwa-reddit-scout</string>
     <key>StartInterval</key>
-    <integer>21600</integer>
+    <integer>3600</integer>
+    <key>StandardOutPath</key>
+    <string>/path/to/Kaiwa-reddit-scout/logs/scout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/path/to/Kaiwa-reddit-scout/logs/scout-error.log</string>
 </dict>
 </plist>
 ```
 
-Load with: `launchctl load ~/Library/LaunchAgents/com.kaiwa.scout.plist`
-
-## API Costs
-
-| Service | Model | Cost | Notes |
-|---------|-------|------|-------|
-| Reddit | - | Free | 60 req/min rate limit |
-| Google AI | gemma-3-27b-it | Free tier available | 1,500 req/day free |
-| Google Sheets | - | Free | Requires service account |
-| Resend | - | Free tier: 100 emails/day | Optional |
-
-**Estimated monthly cost**: $2-5 for 100 posts/day with AI analysis.
-
-## Project Structure
-
-```
-kaiwa-reddit-scout/
-├── src/
-│   ├── main.py              # Entry point
-│   ├── config/
-│   │   ├── settings.py      # Environment config
-│   │   ├── languages.py     # Language definitions
-│   │   └── keywords.py      # Trigger/exclusion keywords
-│   ├── scraper/
-│   │   ├── reddit_client.py # PRAW wrapper
-│   │   └── keyword_filter.py# Filter logic
-│   ├── analyzer/
-│   │   ├── gemini_client.py # Gemini REST API
-│   │   ├── signal_scorer.py # Lead scoring
-│   │   └── response_generator.py # Draft generation
-│   ├── output/
-│   │   └── sheets_client.py # Google Sheets export
-│   └── storage/
-│       ├── csv_storage.py   # CSV output
-│       └── models.py        # Data models
-├── data/                    # Output files (gitignored)
-├── test_apis.py             # API test script
-├── .env.example             # Environment template
-└── requirements.txt
+2. Load it:
+```bash
+launchctl load ~/Library/LaunchAgents/com.kaiwa.scout.plist
 ```
 
-## Implementation Status
+3. To stop:
+```bash
+launchctl unload ~/Library/LaunchAgents/com.kaiwa.scout.plist
+```
 
-| Phase | Features | Status |
-|-------|----------|--------|
-| 1 | Reddit scraping + keyword filtering + CSV output | ✅ Complete |
-| 2 | Gemini AI analysis + signal scoring + response drafts | ✅ Complete |
-| 3 | Google Sheets export with timestamps | ✅ Complete |
-| 4 | Email notifications (Resend) | ✅ Ready |
-| 5 | Scheduled automation | 📝 Manual (cron) |
-
-## Usage Notes
-
-- **Manual outreach only**: Reddit ToS prohibits automated DMs. The tool generates drafts for you to review and send manually.
-- **Respect rate limits**: PRAW handles Reddit's 60 req/min limit automatically.
-- **Review before sending**: Always review AI-generated drafts before posting.
-
-## Development
+### Option 3: Run in Background with nohup (Quick & Dirty)
 
 ```bash
-# Run tests
-pytest
+# Run once per hour in background
+while true; do
+  python3 -m src.main -a --sheets -l 100
+  sleep 3600
+done &
 
-# Lint
-ruff check src/
-
-# Format
-ruff format src/
+# Or with nohup (survives terminal close)
+nohup bash -c 'while true; do python3 -m src.main -a --sheets -l 100; sleep 3600; done' > logs/scout.log 2>&1 &
 ```
+
+---
+
+## Configuration Options
+
+All settings go in your `.env` file:
+
+### AI Models
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GEMINI_MODEL` | `gemma-3-27b-it` | Model for scoring (use free model) |
+| `RESPONSE_MODEL` | `gemini-2.0-flash` | Model for comments (use better model) |
+| `SIGNAL_THRESHOLD` | `7` | Minimum score to generate comments (1-10) |
+| `REQUIRE_COMMENT_WORTHY` | `true` | Evaluate if post is worth commenting on |
+
+### Google Sheets
+
+| Variable | Description |
+|----------|-------------|
+| `GOOGLE_CREDENTIALS_JSON` | Service account JSON (inline) |
+| `GOOGLE_SHEET_NAME` | Sheet name prefix (date auto-appended) |
+| `GOOGLE_FOLDER_ID` | Optional: Create sheets in this folder |
+| `GOOGLE_IMPERSONATE_EMAIL` | Optional: Use domain-wide delegation |
+
+---
+
+## How It Works
+
+```
+Reddit Posts
+     ↓
+[Keyword Filter] → 208 triggers, 68 exclusions
+     ↓
+[AI Scoring] → Gemma rates 1-10
+     ↓
+[Worth Commenting?] → Skip venting/generic posts
+     ↓
+[Generate Comments] → Gemini creates drafts
+     ↓
+CSV + Google Sheets
+```
+
+### Signal Scores
+
+| Score | Type | Meaning |
+|-------|------|---------|
+| 8-10 | HIGH | Speaking anxiety, actively seeking help |
+| 5-7 | MEDIUM | Related struggles, not main focus |
+| 1-4 | LOW | Probably won't benefit |
+
+### Categories
+
+- **Speaking Anxiety** - Fear of speaking, freezing up
+- **Practice Gap** - No conversation partners
+- **Immersion Prep** - Moving abroad, meeting in-laws
+- **Plateau Frustration** - Stuck, not progressing
+- **App Fatigue** - Duolingo isn't working
+
+---
+
+## Output
+
+### CSV File (`data/leads.csv`)
+
+Contains all leads with:
+- Post details (title, URL, author)
+- Matched keywords
+- AI score and category
+- Comment-worthy evaluation
+- Generated comment and DM drafts
+
+### Google Sheets
+
+Auto-dated sheets (e.g., `Kaiwa-Scout-2025-12-18`) with the same data, formatted for easy review.
+
+---
+
+## Troubleshooting
+
+### "Drive storage quota exceeded"
+
+The service account's Drive is full. Options:
+1. Delete old sheets from the service account
+2. Use `GOOGLE_IMPERSONATE_EMAIL` to use your Drive instead
+3. Remove `GOOGLE_FOLDER_ID` to let it create sheets in its own space
+
+### "Gemini API error"
+
+1. Check your API key is correct
+2. Verify the model name exists (try `gemini-1.5-flash` if unsure)
+3. Check your quota at [aistudio.google.com](https://aistudio.google.com)
+
+### "Reddit 403 Forbidden"
+
+1. Verify your Reddit credentials
+2. Make sure your app type is "script"
+3. Check if your account has 2FA (may need app password)
+
+---
+
+## Costs
+
+| Service | Free Tier | Notes |
+|---------|-----------|-------|
+| Reddit API | Unlimited | 60 requests/min limit |
+| Gemma (scoring) | 1,500 req/day | Free via Google AI Studio |
+| Gemini Flash | ~$0.01/1K tokens | Very cheap |
+| Google Sheets | Unlimited | Free with service account |
+
+**Estimated cost:** $2-5/month for 100 posts/day with AI analysis.
+
+---
 
 ## License
 

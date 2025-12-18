@@ -50,7 +50,7 @@ class GeminiConfig:
         return cls(
             api_key=os.getenv("GEMINI_API_KEY", ""),
             model=os.getenv("GEMINI_MODEL", "gemma-3-27b-it"),
-            response_model=os.getenv("RESPONSE_MODEL", "gemini-2.0-flash-lite"),
+            response_model=os.getenv("RESPONSE_MODEL", "gemini-2.0-flash"),
             signal_threshold=int(os.getenv("SIGNAL_THRESHOLD", "7")),
             require_comment_worthy=os.getenv("REQUIRE_COMMENT_WORTHY", "true").lower() == "true",
         )

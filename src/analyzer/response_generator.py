@@ -49,14 +49,16 @@ r/{subreddit}: {title}
 {body}
 
 RULES:
-- Be casual and conversational like a real person
-- NO emojis, NO formatting like *italics* or **bold**
-- NO "Hey!" or overly enthusiastic greetings
-- NO phrases like "I totally get this" or "You've got this!"
-- NO mentioning apps, AI, tools, or any products
-- Just share ONE helpful tip or relatable experience
-- Sound like a normal person, not a marketer or bot
-- 2-3 sentences MAXIMUM
+- 2-3 sentences MAX, be concise
+- Share ONE quick tip or relatable experience
+- End with a genuine question to start a conversation (about their situation, not leading anywhere)
+- Sound like a normal person, not a marketer
+- NO emojis, NO *italics* or **bold**
+- NO em dashes (use commas or periods instead)
+- NO "Hey!" or enthusiastic greetings
+- NO "You've got this!" or cheerleader phrases
+- NO mentioning apps, AI, tools, or products
+- Use simple punctuation (periods, commas, question marks)
 
 Write ONLY the comment, nothing else.
 """

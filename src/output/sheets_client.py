@@ -34,6 +34,8 @@ SHEET_HEADERS = [
     "Signal Score",
     "Signal Type",
     "Category",
+    "Comment Worthy",
+    "Worthy Reason",
     "Public Draft",
     "DM Draft",
     "Status",
@@ -115,7 +117,7 @@ class SheetsClient:
             self._sheet.append_row(SHEET_HEADERS)
 
             # Format header row (bold)
-            self._sheet.format("A1:N1", {"textFormat": {"bold": True}})
+            self._sheet.format("A1:P1", {"textFormat": {"bold": True}})
 
             # Auto-resize columns
             self._sheet.columns_auto_resize(0, len(SHEET_HEADERS) - 1)
@@ -136,6 +138,8 @@ class SheetsClient:
             lead.signal_score or "",
             lead.signal_type or "",
             lead.category or "",
+            "yes" if lead.comment_worthy else ("no" if lead.comment_worthy is False else ""),
+            lead.comment_worthy_reason or "",
             lead.public_draft or "",
             lead.dm_draft or "",
             lead.status,

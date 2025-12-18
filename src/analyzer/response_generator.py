@@ -42,23 +42,23 @@ Respond with ONLY a JSON object:
 """
 
 # Public comment prompt
-PUBLIC_DRAFT_PROMPT = """You are helping draft a supportive public comment on Reddit for someone struggling with language learning, specifically speaking practice.
+PUBLIC_DRAFT_PROMPT = """Write a SHORT Reddit comment (2-3 sentences MAX) responding to this post.
 
-POST DETAILS:
-- Subreddit: r/{subreddit}
-- Title: {title}
-- Body: {body}
-- Category: {category}
+POST:
+r/{subreddit}: {title}
+{body}
 
-Write a helpful, empathetic Reddit comment that:
-1. Acknowledges their specific struggle (speaking anxiety, lack of practice, etc.)
-2. Shares a brief relatable insight or tip
-3. Subtly mentions that AI conversation apps can help with low-pressure speaking practice
-4. Does NOT directly promote Kaiwa or any specific app - keep it natural and helpful
-5. Keeps it under 150 words
-6. Sounds like a friendly Redditor, not a marketer
+RULES:
+- Be casual and conversational like a real person
+- NO emojis, NO formatting like *italics* or **bold**
+- NO "Hey!" or overly enthusiastic greetings
+- NO phrases like "I totally get this" or "You've got this!"
+- NO mentioning apps, AI, tools, or any products
+- Just share ONE helpful tip or relatable experience
+- Sound like a normal person, not a marketer or bot
+- 2-3 sentences MAXIMUM
 
-Write ONLY the comment text, no explanations or headers.
+Write ONLY the comment, nothing else.
 """
 
 # DM prompt

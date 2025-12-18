@@ -86,6 +86,11 @@ class SheetsClient:
                     str(creds_path), scopes=SCOPES
                 )
 
+            # If impersonate_email is set, use domain-wide delegation
+            if sheets_config.impersonate_email:
+                credentials = credentials.with_subject(sheets_config.impersonate_email)
+                logger.info(f"Using domain-wide delegation to impersonate: {sheets_config.impersonate_email}")
+
             self._client = gspread.authorize(credentials)
 
         return self._client

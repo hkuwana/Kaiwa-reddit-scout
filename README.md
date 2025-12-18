@@ -51,12 +51,12 @@ nano .env  # or use your preferred editor
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `GEMINI_MODEL` | `gemma-3-27b-it` | Model for scoring/filtering (use cheaper model) |
-| `RESPONSE_MODEL` | `gemini-2.0-flash-lite` | Model for generating comments (use higher quality model) |
+| `RESPONSE_MODEL` | `gemini-2.5-flash-lite` | Model for generating comments (use higher quality model) |
 | `SIGNAL_THRESHOLD` | `7` | Minimum score for high-signal leads |
 | `REQUIRE_COMMENT_WORTHY` | `true` | Evaluate if posts are worth commenting on before generating drafts |
 
 **Recommended model configurations**:
-- **Cost-optimized**: `GEMINI_MODEL=gemma-3-27b-it` + `RESPONSE_MODEL=gemini-2.0-flash-lite`
+- **Cost-optimized**: `GEMINI_MODEL=gemma-3-27b-it` + `RESPONSE_MODEL=gemini-2.5-flash-lite`
 - **Quality-focused**: `GEMINI_MODEL=gemini-1.5-flash` + `RESPONSE_MODEL=gemini-1.5-pro`
 
 ### 3. Test your setup

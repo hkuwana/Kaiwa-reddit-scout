@@ -242,6 +242,19 @@ mkdir -p logs
 */30 * * * * ...
 ```
 
+**To stop a cron job:**
+
+```bash
+# List your current cron jobs
+crontab -l
+
+# Edit and remove the line
+crontab -e
+
+# Or remove ALL your cron jobs (careful!)
+crontab -r
+```
+
 ### Option 2: Python Background Script (Cross-Platform)
 
 A built-in Python scheduler that runs in the background. Works on Linux, Mac, and Windows.

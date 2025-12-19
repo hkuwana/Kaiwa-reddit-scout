@@ -242,60 +242,52 @@ mkdir -p logs
 */30 * * * * ...
 ```
 
-### Option 2: launchd (Mac - Runs Even When Logged Out)
+### Option 2: Python Background Script (Cross-Platform)
 
-1. Create the file `~/Library/LaunchAgents/com.kaiwa.scout.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.kaiwa.scout</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/path/to/venv/bin/python</string>
-        <string>-m</string>
-        <string>src.main</string>
-        <string>-a</string>
-        <string>--sheets</string>
-        <string>-l</string>
-        <string>100</string>
-    </array>
-    <key>WorkingDirectory</key>
-    <string>/path/to/Kaiwa-reddit-scout</string>
-    <key>StartInterval</key>
-    <integer>3600</integer>
-    <key>StandardOutPath</key>
-    <string>/path/to/Kaiwa-reddit-scout/logs/scout.log</string>
-    <key>StandardErrorPath</key>
-    <string>/path/to/Kaiwa-reddit-scout/logs/scout-error.log</string>
-</dict>
-</plist>
-```
-
-2. Load it:
-```bash
-launchctl load ~/Library/LaunchAgents/com.kaiwa.scout.plist
-```
-
-3. To stop:
-```bash
-launchctl unload ~/Library/LaunchAgents/com.kaiwa.scout.plist
-```
-
-### Option 3: Run in Background with nohup (Quick & Dirty)
+A built-in Python scheduler that runs in the background. Works on Linux, Mac, and Windows.
 
 ```bash
-# Run once per hour in background
-while true; do
-  python3 -m src.main -a --sheets -l 100
-  sleep 3600
-done &
+# Activate your virtual environment first
+source venv/bin/activate
 
-# Or with nohup (survives terminal close)
-nohup bash -c 'while true; do python3 -m src.main -a --sheets -l 100; sleep 3600; done' > logs/scout.log 2>&1 &
+# Run every 60 minutes (default)
+python3 scheduler.py
+
+# Run every 30 minutes with Google Sheets export
+python3 scheduler.py --interval 30 --sheets
+
+# Run in background (survives terminal close)
+nohup python3 scheduler.py --interval 60 --sheets > logs/scheduler.log 2>&1 &
+```
+
+**Scheduler options:**
+
+| Option | Description |
+|--------|-------------|
+| `--interval 30` | Run every 30 minutes (default: 60) |
+| `--limit 100` | Max posts per run (default: 100) |
+| `--sheets` | Export to Google Sheets |
+| `--no-analyze` | Disable AI analysis |
+| `--run-once` | Run once and exit (for testing) |
+| `-v` | Verbose output |
+
+**To stop the background scheduler:**
+
+```bash
+# Find the process
+ps aux | grep scheduler.py
+
+# Kill it by PID
+kill <PID>
+
+# Or kill by name
+pkill -f scheduler.py
+```
+
+**View logs:**
+
+```bash
+tail -f logs/scheduler.log
 ```
 
 ---

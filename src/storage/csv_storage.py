@@ -37,6 +37,9 @@ CSV_COLUMNS = [
     "comment_worthy_reason",
     "public_draft",
     "dm_draft",
+    # Action tracking columns
+    "sent",
+    "sent_date",
 ]
 
 

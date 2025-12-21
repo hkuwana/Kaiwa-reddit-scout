@@ -33,6 +33,8 @@ CSV_COLUMNS = [
     "signal_score",
     "signal_type",
     "category",
+    "comment_worthy",
+    "comment_worthy_reason",
     "public_draft",
     "dm_draft",
 ]

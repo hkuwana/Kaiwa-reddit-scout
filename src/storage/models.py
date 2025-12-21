@@ -76,6 +76,10 @@ class Lead:
     # Status tracking
     status: str = "new"  # new, contacted, replied, converted, ignored
 
+    # Action tracking
+    sent: bool = False  # Whether comment has been posted
+    sent_date: Optional[str] = None  # When comment was posted
+
     @classmethod
     def from_post(
         cls,
@@ -132,6 +136,8 @@ class Lead:
             "comment_worthy_reason": self.comment_worthy_reason or "",
             "public_draft": self.public_draft or "",
             "dm_draft": self.dm_draft or "",
+            "sent": "yes" if self.sent else "",
+            "sent_date": self.sent_date or "",
         }
 
 

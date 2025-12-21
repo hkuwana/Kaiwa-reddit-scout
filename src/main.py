@@ -238,6 +238,11 @@ def main():
         action="store_true",
         help="List supported languages and exit",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Validate all API connections and exit (run before scheduling)",
+    )
 
     args = parser.parse_args()
 
@@ -255,6 +260,74 @@ def main():
         for code, lang in LANGUAGES.items():
             print(f"  [{code}] {lang.name}")
             print(f"       Subreddits: {', '.join(lang.subreddits)}")
+        return
+
+    if args.check:
+        print("\n" + "=" * 60)
+        print("KAIWA REDDIT SCOUT - API CHECK")
+        print("=" * 60)
+        print("Validating all API connections...\n")
+
+        all_ok = True
+
+        # Check Reddit
+        print("[1/3] Reddit API...")
+        from src.config.settings import reddit_config
+        if reddit_config.is_valid():
+            try:
+                from src.scraper.reddit_client import get_reddit_client
+                client = get_reddit_client(use_mock=False)
+                posts = list(client.get_new_posts(["languagelearning"], limit=1))
+                print("      OK - Connected successfully")
+            except Exception as e:
+                print(f"      FAIL - {e}")
+                all_ok = False
+        else:
+            print("      FAIL - Credentials not configured")
+            all_ok = False
+
+        # Check Gemini
+        print("[2/3] Gemini API...")
+        if gemini_config.is_valid():
+            try:
+                from src.analyzer.gemini_client import GeminiClient
+                client = GeminiClient()
+                response = client.generate("Reply with OK")
+                if response:
+                    print(f"      OK - Model: {gemini_config.model}")
+                else:
+                    print("      FAIL - No response")
+                    all_ok = False
+            except Exception as e:
+                print(f"      FAIL - {e}")
+                all_ok = False
+        else:
+            print("      SKIP - Not configured (optional)")
+
+        # Check Sheets
+        print("[3/3] Google Sheets...")
+        if sheets_config.is_valid():
+            try:
+                from src.output import SheetsClient
+                client = SheetsClient(auto_date=False)
+                sheets = client.list_available_sheets()
+                print(f"      OK - Found {len(sheets)} accessible sheets")
+            except Exception as e:
+                print(f"      FAIL - {e}")
+                all_ok = False
+        else:
+            print("      SKIP - Not configured (optional)")
+
+        print("\n" + "=" * 60)
+        if all_ok:
+            print("All checks passed! Ready for scheduling.")
+            print("\nExample cron job (every hour):")
+            print("  0 * * * * cd /path/to/Kaiwa-reddit-scout && \\")
+            print("    /path/to/venv/bin/python -m src.main -a -l 100 --sheets \\")
+            print("    >> logs/scout.log 2>&1")
+        else:
+            print("Some checks failed. Fix the issues above before scheduling.")
+        print("=" * 60)
         return
 
     # Parse subreddits

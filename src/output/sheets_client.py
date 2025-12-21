@@ -21,7 +21,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-# Sheet headers
+# Sheet headers for main sheet (all leads)
 SHEET_HEADERS = [
     "Timestamp",
     "Subreddit",
@@ -39,6 +39,20 @@ SHEET_HEADERS = [
     "Public Draft",
     "DM Draft",
     "Status",
+    "Sent",        # Checkbox for tracking
+    "Sent Date",   # When the comment was sent
+]
+
+# Sheet headers for action tab (streamlined for quick action)
+ACTION_HEADERS = [
+    "Post URL",
+    "Title",
+    "Subreddit",
+    "Signal",
+    "Category",
+    "Draft Comment",
+    "Sent",
+    "Sent Date",
 ]
 
 
@@ -122,12 +136,41 @@ class SheetsClient:
             self._sheet.append_row(SHEET_HEADERS)
 
             # Format header row (bold)
-            self._sheet.format("A1:P1", {"textFormat": {"bold": True}})
+            self._sheet.format("A1:R1", {"textFormat": {"bold": True}})
 
             # Auto-resize columns
             self._sheet.columns_auto_resize(0, len(SHEET_HEADERS) - 1)
 
+            # Add checkbox data validation for "Sent" column (Q)
+            try:
+                self._sheet.format("Q2:Q1000", {"dataValidation": {"condition": {"type": "BOOLEAN"}}})
+            except Exception:
+                pass  # Checkboxes are optional
+
         return self._sheet
+
+    def _get_or_create_action_sheet(self, spreadsheet):
+        """Get or create the Action tab for comment-worthy leads."""
+        try:
+            action_sheet = spreadsheet.worksheet("Action")
+            logger.info("Using existing Action tab")
+        except gspread.WorksheetNotFound:
+            action_sheet = spreadsheet.add_worksheet(title="Action", rows=100, cols=len(ACTION_HEADERS))
+            action_sheet.append_row(ACTION_HEADERS)
+            action_sheet.format("A1:H1", {"textFormat": {"bold": True}})
+
+            # Add checkbox data validation for "Sent" column (G)
+            try:
+                action_sheet.format("G2:G1000", {"dataValidation": {"condition": {"type": "BOOLEAN"}}})
+            except Exception:
+                pass
+
+            # Freeze header row
+            action_sheet.freeze(rows=1)
+
+            logger.info("Created new Action tab")
+
+        return action_sheet
 
     def _lead_to_row(self, lead: Lead) -> list:
         """Convert a Lead to a sheet row."""
@@ -148,6 +191,21 @@ class SheetsClient:
             lead.public_draft or "",
             lead.dm_draft or "",
             lead.status,
+            False,  # Sent (checkbox)
+            "",     # Sent Date
+        ]
+
+    def _lead_to_action_row(self, lead: Lead) -> list:
+        """Convert a Lead to an action sheet row (streamlined for quick action)."""
+        return [
+            lead.post_url,
+            lead.title[:80],
+            lead.subreddit,
+            f"{lead.signal_score}/10" if lead.signal_score else "",
+            lead.category or "",
+            lead.public_draft or "",
+            False,  # Sent (checkbox)
+            "",     # Sent Date
         ]
 
     def get_existing_post_ids(self) -> set[str]:
@@ -230,6 +288,7 @@ class SheetsClient:
 
             # Prepare rows to append
             rows = []
+            action_rows = []
             saved = 0
             skipped = 0
 
@@ -242,10 +301,25 @@ class SheetsClient:
                 existing_ids.add(lead.post_id)  # Track for this batch
                 saved += 1
 
-            # Batch append
+                # Add comment-worthy leads to Action tab
+                if lead.comment_worthy and lead.public_draft:
+                    action_rows.append(self._lead_to_action_row(lead))
+
+            # Batch append to main sheet
             if rows:
                 sheet = self._get_or_create_sheet()
                 sheet.append_rows(rows, value_input_option="USER_ENTERED")
+
+            # Batch append to Action tab
+            if action_rows:
+                try:
+                    client = self._get_client()
+                    spreadsheet = client.open(self.sheet_name)
+                    action_sheet = self._get_or_create_action_sheet(spreadsheet)
+                    action_sheet.append_rows(action_rows, value_input_option="USER_ENTERED")
+                    logger.info(f"Added {len(action_rows)} leads to Action tab")
+                except Exception as e:
+                    logger.warning(f"Could not add to Action tab: {e}")
 
             logger.info(f"Added {saved} leads to sheet, skipped {skipped} duplicates")
             return {"saved": saved, "skipped": skipped}

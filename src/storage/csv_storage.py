@@ -111,21 +111,23 @@ class CSVStorage:
         logger.info(f"Saved lead: u/{lead.author} ({lead.post_id})")
         return True
 
-    def save_leads(self, leads: list[Lead]) -> dict:
+    def save_leads(self, leads: list[Lead], min_score: Optional[int] = None) -> dict:
         """
         Save multiple leads to CSV.
 
         Args:
             leads: List of Lead objects
+            min_score: Minimum signal score to save (leads below this are filtered out)
 
         Returns:
-            Stats dict with saved/skipped counts
+            Stats dict with saved/skipped/filtered counts
         """
         self._ensure_file_exists()
         existing_ids = self.get_existing_post_ids()
 
         saved = 0
         skipped = 0
+        filtered = 0
 
         with open(self.leads_file, "a", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
@@ -135,12 +137,19 @@ class CSVStorage:
                     skipped += 1
                     continue
 
+                # Filter by minimum score if specified
+                if min_score is not None:
+                    if not lead.signal_score or lead.signal_score < min_score:
+                        filtered += 1
+                        logger.debug(f"Filtering lead {lead.post_id}: score {lead.signal_score} < {min_score}")
+                        continue
+
                 writer.writerow(lead.to_csv_row())
                 existing_ids.add(lead.post_id)  # Track for this batch
                 saved += 1
 
-        logger.info(f"Saved {saved} leads, skipped {skipped} duplicates")
-        return {"saved": saved, "skipped": skipped}
+        logger.info(f"Saved {saved} leads, skipped {skipped} duplicates, filtered {filtered} (score < {min_score})")
+        return {"saved": saved, "skipped": skipped, "filtered": filtered}
 
     def get_leads(
         self,

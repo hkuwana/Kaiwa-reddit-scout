@@ -1,0 +1,24 @@
+# Fly.io configuration for Kaiwa Reddit Scout
+# This is a background worker, not a web service
+
+app = 'kaiwa-reddit-scout'
+primary_region = 'sjc'
+
+[build]
+
+[env]
+  LOG_LEVEL = "INFO"
+
+# Background worker process - no HTTP service
+[processes]
+  scout = "python3 scheduler.py --interval 30 --sheets --limit 100"
+
+# Machine configuration
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+# Keep the worker running
+[deploy]
+  strategy = "immediate"

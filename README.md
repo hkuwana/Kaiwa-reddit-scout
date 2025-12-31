@@ -303,6 +303,92 @@ pkill -f scheduler.py
 tail -f logs/scheduler.log
 ```
 
+### Option 3: Deploy to Fly.io (Recommended for 24/7)
+
+Run the scout on Fly.io for reliable, always-on operation without worrying about your laptop sleeping.
+
+#### Step 1: Install Fly CLI
+
+```bash
+# Mac
+brew install flyctl
+
+# Linux
+curl -L https://fly.io/install.sh | sh
+
+# Windows
+powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"
+```
+
+#### Step 2: Login and Create App
+
+```bash
+fly auth login
+fly apps create kaiwa-reddit-scout
+```
+
+#### Step 3: Set Secrets
+
+```bash
+# Reddit API
+fly secrets set REDDIT_CLIENT_ID=your_client_id
+fly secrets set REDDIT_CLIENT_SECRET=your_client_secret
+fly secrets set REDDIT_USERNAME=your_username
+fly secrets set REDDIT_PASSWORD=your_password
+
+# Gemini API
+fly secrets set GEMINI_API_KEY=your_gemini_key
+fly secrets set GEMINI_MODEL=gemma-3-27b-it
+fly secrets set RESPONSE_MODEL=gemini-2.0-flash
+
+# Google Sheets (paste the entire JSON on one line)
+fly secrets set GOOGLE_CREDENTIALS_JSON='{"type":"service_account","project_id":"...","private_key":"..."}'
+fly secrets set GOOGLE_SHEET_NAME=Kaiwa-Scout
+```
+
+#### Step 4: Deploy
+
+```bash
+fly deploy
+```
+
+#### Step 5: Set Up CI/CD (Optional)
+
+To auto-deploy on every push to main:
+
+1. Get a Fly API token:
+   ```bash
+   fly tokens create deploy -x 999999h
+   ```
+
+2. Add it to GitHub Secrets:
+   - Go to your repo → Settings → Secrets → Actions
+   - Add `FLY_API_TOKEN` with the token value
+
+Now every push to `main` will automatically deploy to Fly.io.
+
+#### Fly.io Commands
+
+```bash
+# View logs
+fly logs
+
+# Check status
+fly status
+
+# SSH into the machine
+fly ssh console
+
+# Stop the app (saves money)
+fly scale count 0
+
+# Start the app
+fly scale count 1
+
+# View secrets
+fly secrets list
+```
+
 ---
 
 ## Configuration Options

@@ -42,23 +42,35 @@ Respond with ONLY a JSON object:
 """
 
 # Public comment prompt
-PUBLIC_DRAFT_PROMPT = """Write a SHORT Reddit comment (2-3 sentences MAX) responding to this post.
+PUBLIC_DRAFT_PROMPT = """Write a Reddit comment responding to this post as someone who genuinely uses language learning tools.
 
 POST:
 r/{subreddit}: {title}
 {body}
 
-RULES:
-- 2-3 sentences MAX, be concise
-- Share ONE quick tip or relatable experience
-- End with a genuine question to start a conversation (about their situation, not leading anywhere)
-- Sound like a normal person, not a marketer
-- NO emojis, NO *italics* or **bold**
-- NO em dashes (use commas or periods instead)
-- NO "Hey!" or enthusiastic greetings
-- NO "You've got this!" or cheerleader phrases
-- NO mentioning apps, AI, tools, or products
-- Use simple punctuation (periods, commas, question marks)
+CONTEXT:
+You're a language learner who has tried many tools and wants to share what actually works. You use Kaiwa (trykaiwa.com) for conversation practice but don't push it - only mention if genuinely relevant.
+
+IMPORTANT - ACTUALLY ANSWER THE QUESTION:
+- If they ask for AI recommendations: give real opinions (e.g., for Mandarin, DeepSeek and Qwen are better than ChatGPT)
+- If they ask about tools: share what you've actually found useful
+- If they're struggling with speaking: share what helped you
+
+STYLE:
+- Write like a real person sharing experience, not a marketer
+- Be direct and specific, not vague or generic
+- Use casual language, lowercase is fine
+- 2-4 sentences, more if needed to be helpful
+- If mentioning Kaiwa, do it naturally at the end like "there's also kaiwa (trykaiwa) if you want something more structured" - never forced
+- NO emojis, NO *bold* or formatting
+- NO cheerleader phrases like "You've got this!"
+- NO generic advice that doesn't answer their specific question
+
+BAD EXAMPLE (generic, doesn't help):
+"I've found that practicing speaking with myself can really help build confidence. What kind of conversations are you hoping to practice most?"
+
+GOOD EXAMPLE (specific, actually helpful):
+"for mandarin AI, skip chatgpt and go straight for deepseek or qwen. qwen especially is way better at natural chinese. i tried chatgpt for creating dialogues and it starts hallucinating halfway through. if you want something that saves your progress like a lesson plan there's kaiwa (trykaiwa) but the free chinese LLMs are solid for quick practice."
 
 Write ONLY the comment, nothing else.
 """
@@ -163,7 +175,7 @@ class ResponseGenerator:
         )
 
         # Use response_model for better quality output
-        return self.client.generate(prompt, max_tokens=300, model=self.response_model)
+        return self.client.generate(prompt, max_tokens=500, model=self.response_model)
 
     def generate_dm_draft(self, lead: Lead) -> Optional[str]:
         """

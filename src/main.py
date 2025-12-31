@@ -157,6 +157,8 @@ def run_scout(
     if use_sheets and sheet_url:
         print(f"  Sheet:       {sheet_url}")
         print(f"  Sheet saved: {sheets_result['saved']}")
+        if sheets_result.get('filtered', 0) > 0:
+            print(f"  Sheet filtered: {sheets_result['filtered']} (score ≤6 or no comment)")
     print("=" * 60)
 
     # Show new leads

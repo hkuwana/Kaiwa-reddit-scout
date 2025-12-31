@@ -265,22 +265,26 @@ class SheetsClient:
             logger.error(f"Error appending to sheet: {e}")
             return False
 
-    def append_leads(self, leads: list[Lead]) -> dict:
+    def append_leads(self, leads: list[Lead], min_score: int = 7) -> dict:
         """
         Append multiple leads to the sheet.
 
+        Only includes leads that have a public_draft (comment) AND
+        a signal_score above the minimum threshold.
+
         Args:
             leads: List of leads to append
+            min_score: Minimum signal score required (default: 7, meaning > 6)
 
         Returns:
-            Stats dict with saved/skipped counts
+            Stats dict with saved/skipped/filtered counts
         """
         if not self.is_configured():
             logger.warning("Google Sheets not configured - skipping sheet output")
-            return {"saved": 0, "skipped": len(leads)}
+            return {"saved": 0, "skipped": len(leads), "filtered": 0}
 
         if not leads:
-            return {"saved": 0, "skipped": 0}
+            return {"saved": 0, "skipped": 0, "filtered": 0}
 
         try:
             # Get existing IDs once
@@ -291,8 +295,18 @@ class SheetsClient:
             action_rows = []
             saved = 0
             skipped = 0
+            filtered = 0
 
             for lead in leads:
+                # Filter out leads without a comment or with low scores
+                if not lead.public_draft:
+                    filtered += 1
+                    logger.debug(f"Filtering lead {lead.post_id}: no public_draft")
+                    continue
+                if not lead.signal_score or lead.signal_score < min_score:
+                    filtered += 1
+                    logger.debug(f"Filtering lead {lead.post_id}: score {lead.signal_score} < {min_score}")
+                    continue
                 if lead.post_id in existing_ids:
                     skipped += 1
                     continue
@@ -321,12 +335,12 @@ class SheetsClient:
                 except Exception as e:
                     logger.warning(f"Could not add to Action tab: {e}")
 
-            logger.info(f"Added {saved} leads to sheet, skipped {skipped} duplicates")
-            return {"saved": saved, "skipped": skipped}
+            logger.info(f"Added {saved} leads to sheet, skipped {skipped} duplicates, filtered {filtered} (low score or no comment)")
+            return {"saved": saved, "skipped": skipped, "filtered": filtered}
 
         except Exception as e:
             logger.error(f"Error batch appending to sheet: {e}")
-            return {"saved": 0, "skipped": len(leads)}
+            return {"saved": 0, "skipped": len(leads), "filtered": 0}
 
     def get_sheet_url(self) -> Optional[str]:
         """Get the URL of the spreadsheet."""

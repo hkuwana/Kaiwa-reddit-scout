@@ -113,13 +113,17 @@ def run_scout(
             logger.warning("Gemini API not configured - skipping AI analysis")
             logger.warning("Set GEMINI_API_KEY in .env to enable analysis")
 
-    # Save to CSV
+    # Save to CSV (filter by score if analysis was run)
     if leads:
         logger.info("Saving leads to CSV...")
-        save_result = storage.save_leads(leads)
+        # Only save high-quality leads (score >= threshold) when analysis is enabled
+        min_score = gemini_config.signal_threshold if analyze else None
+        save_result = storage.save_leads(leads, min_score=min_score)
         logger.info(f"Saved {save_result['saved']} new leads, skipped {save_result['skipped']} duplicates")
+        if save_result.get('filtered', 0) > 0:
+            logger.info(f"Filtered {save_result['filtered']} leads (score < {min_score})")
     else:
-        save_result = {"saved": 0, "skipped": 0}
+        save_result = {"saved": 0, "skipped": 0, "filtered": 0}
         logger.info("No leads to save")
 
     # Phase 3: Export to Google Sheets
@@ -153,6 +157,8 @@ def run_scout(
             print(f"  Skipped (not worthy): {skipped_unworthy_count}")
     print(f"  New saved:   {save_result['saved']}")
     print(f"  Duplicates:  {save_result['skipped']}")
+    if save_result.get('filtered', 0) > 0:
+        print(f"  CSV filtered: {save_result['filtered']} (score < {gemini_config.signal_threshold})")
     print(f"  CSV file:    {storage.leads_file}")
     if use_sheets and sheet_url:
         print(f"  Sheet:       {sheet_url}")

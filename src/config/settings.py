@@ -44,6 +44,7 @@ class GeminiConfig:
     response_model: str  # Model for generating comments (use better Gemini model)
     signal_threshold: int
     require_comment_worthy: bool  # Whether to evaluate comment-worthiness before generating
+    kaiwa_mention_probability: float  # Probability (0.0-1.0) of mentioning Kaiwa in comments
 
     @classmethod
     def from_env(cls) -> "GeminiConfig":
@@ -53,6 +54,7 @@ class GeminiConfig:
             response_model=os.getenv("RESPONSE_MODEL", "gemini-2.5-flash-lite"),
             signal_threshold=int(os.getenv("SIGNAL_THRESHOLD", "7")),
             require_comment_worthy=os.getenv("REQUIRE_COMMENT_WORTHY", "true").lower() == "true",
+            kaiwa_mention_probability=float(os.getenv("KAIWA_MENTION_PROBABILITY", "0.2")),
         )
 
     def is_valid(self) -> bool:
@@ -131,6 +133,7 @@ def print_config_status():
     print(f"  - Response model: {gemini_config.response_model}")
     print(f"  - Signal threshold: {gemini_config.signal_threshold}")
     print(f"  - Require comment-worthy: {gemini_config.require_comment_worthy}")
+    print(f"  - Kaiwa mention probability: {gemini_config.kaiwa_mention_probability:.0%}")
     print(f"Google Sheets configured: {sheets_config.is_valid()}")
     print(f"  - Credentials: {'(inline JSON)' if sheets_config.has_inline_json() else sheets_config.credentials_file}")
     print(f"  - Sheet name: {sheets_config.sheet_name}")

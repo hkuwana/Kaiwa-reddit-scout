@@ -4,6 +4,7 @@ Response draft generator for Reddit leads using Gemini.
 
 import json
 import logging
+import random
 from typing import Optional
 
 from src.analyzer.gemini_client import GeminiClient
@@ -74,6 +75,47 @@ GOOD EXAMPLE (specific, actually helpful):
 
 Write ONLY the comment, nothing else.
 """
+
+# Value-only prompt (no Kaiwa mention) for building genuine credibility
+VALUE_ONLY_PROMPT = """Write a Reddit comment responding to this post as someone who genuinely helps language learners.
+
+POST:
+r/{subreddit}: {title}
+{body}
+
+CONTEXT:
+You're an experienced language learner who wants to share what actually works. Give genuinely helpful advice based on your experience.
+
+IMPORTANT - ACTUALLY ANSWER THE QUESTION:
+- If they ask for AI recommendations: give real opinions (e.g., for Mandarin, DeepSeek and Qwen are better than ChatGPT)
+- If they ask about tools: share what you've actually found useful
+- If they're struggling with speaking: share what helped you
+- Give specific, actionable advice they can use TODAY
+
+STYLE:
+- Write like a real person sharing experience
+- Be direct and specific, not vague or generic
+- Use casual language, lowercase is fine
+- 2-4 sentences, more if needed to be helpful
+- NO product recommendations or app mentions
+- NO emojis, NO *bold* or formatting
+- NO cheerleader phrases like "You've got this!"
+- NO generic advice that doesn't answer their specific question
+
+GOOD EXAMPLE:
+"for mandarin AI, skip chatgpt and go straight for deepseek or qwen. qwen especially is way better at natural chinese. i tried chatgpt for creating dialogues and it starts hallucinating halfway through. the free chinese LLMs are honestly solid for quick practice sessions."
+
+Write ONLY the comment, nothing else.
+"""
+
+# Variety of natural Kaiwa mention formats (rotated to avoid pattern detection)
+KAIWA_MENTION_TEMPLATES = [
+    "there's also kaiwa (trykaiwa) if you want something more structured",
+    "i've been using kaiwa (trykaiwa) for this and it's been helpful",
+    "kaiwa (trykaiwa) has been good for structured conversation practice if that's your thing",
+    "for structured practice there's kaiwa (trykaiwa) which i've found useful",
+    "if you want something that tracks your progress, kaiwa (trykaiwa) is worth checking out",
+]
 
 # DM prompt
 DM_DRAFT_PROMPT = """You are helping draft a friendly direct message to a Reddit user who might benefit from a language speaking practice app.
@@ -152,30 +194,52 @@ class ResponseGenerator:
             logger.error(f"Error evaluating comment worthiness: {e}")
             return True, "Error - defaulting to worthy"
 
-    def generate_public_draft(self, lead: Lead) -> Optional[str]:
+    def generate_public_draft(self, lead: Lead) -> tuple[Optional[str], bool]:
         """
         Generate a public comment draft for a lead.
 
-        Uses the response model (higher quality) for generation.
+        Uses probability-based selection between value-only (no Kaiwa mention)
+        and promotional prompts to build genuine credibility.
 
         Args:
             lead: Lead to generate comment for
 
         Returns:
-            Draft comment text or None
+            Tuple of (draft comment text or None, whether Kaiwa mention was allowed)
         """
         if not self.client.is_configured():
-            return None
+            return None, False
 
-        prompt = PUBLIC_DRAFT_PROMPT.format(
-            subreddit=lead.subreddit,
-            title=lead.title,
-            body=lead.body[:1000],
-            category=lead.category or "General Learning",
-        )
+        # Probability-based selection: mostly pure value, occasionally with Kaiwa mention
+        mention_probability = gemini_config.kaiwa_mention_probability
+        include_kaiwa = random.random() < mention_probability
+
+        if include_kaiwa:
+            # Use the promotional prompt (may mention Kaiwa naturally)
+            # Inject a random mention template for variety
+            mention_template = random.choice(KAIWA_MENTION_TEMPLATES)
+            prompt = PUBLIC_DRAFT_PROMPT.format(
+                subreddit=lead.subreddit,
+                title=lead.title,
+                body=lead.body[:1000],
+                category=lead.category or "General Learning",
+            ).replace(
+                "there's also kaiwa (trykaiwa) if you want something more structured",
+                mention_template
+            )
+            logger.info(f"Using promotional prompt for {lead.post_id} (mention allowed)")
+        else:
+            # Use value-only prompt (no product mentions)
+            prompt = VALUE_ONLY_PROMPT.format(
+                subreddit=lead.subreddit,
+                title=lead.title,
+                body=lead.body[:1000],
+            )
+            logger.info(f"Using value-only prompt for {lead.post_id} (pure credibility building)")
 
         # Use response_model for better quality output
-        return self.client.generate(prompt, max_tokens=500, model=self.response_model)
+        draft = self.client.generate(prompt, max_tokens=500, model=self.response_model)
+        return draft, include_kaiwa
 
     def generate_dm_draft(self, lead: Lead) -> Optional[str]:
         """
@@ -232,7 +296,9 @@ class ResponseGenerator:
 
         # Generate responses only for worthy leads
         logger.info(f"Generating responses for lead {lead.post_id} using {self.response_model}...")
-        lead.public_draft = self.generate_public_draft(lead)
+        draft, kaiwa_mentioned = self.generate_public_draft(lead)
+        lead.public_draft = draft
+        lead.kaiwa_mention_allowed = kaiwa_mentioned
         lead.dm_draft = self.generate_dm_draft(lead)
 
         return lead

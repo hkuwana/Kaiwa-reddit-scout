@@ -72,6 +72,7 @@ class Lead:
     comment_worthy_reason: Optional[str] = None  # Why or why not
     public_draft: Optional[str] = None
     dm_draft: Optional[str] = None
+    kaiwa_mention_allowed: Optional[bool] = None  # Whether Kaiwa mention was allowed for this comment
 
     # Status tracking
     status: str = "new"  # new, contacted, replied, converted, ignored
@@ -134,6 +135,7 @@ class Lead:
             "category": self.category or "",
             "comment_worthy": "" if self.comment_worthy is None else ("yes" if self.comment_worthy else "no"),
             "comment_worthy_reason": self.comment_worthy_reason or "",
+            "kaiwa_mention": "" if self.kaiwa_mention_allowed is None else ("yes" if self.kaiwa_mention_allowed else "no"),
             "public_draft": self.public_draft or "",
             "dm_draft": self.dm_draft or "",
             "sent": "yes" if self.sent else "",

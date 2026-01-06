@@ -9,6 +9,7 @@ from typing import Optional
 
 from src.analyzer.gemini_client import GeminiClient
 from src.config.settings import gemini_config
+from src.config.mention_rates import get_mention_rate, is_value_only_subreddit
 from src.storage.models import Lead
 
 logger = logging.getLogger(__name__)
@@ -42,70 +43,42 @@ Respond with ONLY a JSON object:
 {{"worthy": true/false, "reason": "<brief 1-sentence explanation>"}}
 """
 
-# Public comment prompt
-PUBLIC_DRAFT_PROMPT = """Write a Reddit comment responding to this post as someone who genuinely uses language learning tools.
+# Public comment prompt (with optional Kaiwa mention)
+PUBLIC_DRAFT_PROMPT = """Write a short Reddit comment. Be direct and helpful.
 
-POST:
-r/{subreddit}: {title}
+POST: r/{subreddit}: {title}
 {body}
 
-CONTEXT:
-You're a language learner who has tried many tools and wants to share what actually works. You use Kaiwa (trykaiwa.com) for conversation practice but don't push it - only mention if genuinely relevant.
+RULES:
+1. Answer their SPECIFIC question in 1-3 sentences
+2. Give concrete advice, not generic tips
+3. Write casual, lowercase, like texting a friend
+4. End with a natural Kaiwa mention: "{kaiwa_mention}"
+5. NO fluff, NO "great question!", NO emojis, NO questions back
 
-IMPORTANT - ACTUALLY ANSWER THE QUESTION:
-- If they ask for AI recommendations: give real opinions (e.g., for Mandarin, DeepSeek and Qwen are better than ChatGPT)
-- If they ask about tools: share what you've actually found useful
-- If they're struggling with speaking: share what helped you
+BAD: "I've found practicing speaking helps build confidence. What conversations do you want to practice?"
+GOOD: "for mandarin AI, skip chatgpt - deepseek and qwen are way better at natural chinese. {kaiwa_mention}"
 
-STYLE:
-- Write like a real person sharing experience, not a marketer
-- Be direct and specific, not vague or generic
-- Use casual language, lowercase is fine
-- 2-4 sentences, more if needed to be helpful
-- If mentioning Kaiwa, do it naturally at the end like "there's also kaiwa (trykaiwa) if you want something more structured" - never forced
-- NO emojis, NO *bold* or formatting
-- NO cheerleader phrases like "You've got this!"
-- NO generic advice that doesn't answer their specific question
-
-BAD EXAMPLE (generic, doesn't help):
-"I've found that practicing speaking with myself can really help build confidence. What kind of conversations are you hoping to practice most?"
-
-GOOD EXAMPLE (specific, actually helpful):
-"for mandarin AI, skip chatgpt and go straight for deepseek or qwen. qwen especially is way better at natural chinese. i tried chatgpt for creating dialogues and it starts hallucinating halfway through. if you want something that saves your progress like a lesson plan there's kaiwa (trykaiwa) but the free chinese LLMs are solid for quick practice."
-
-Write ONLY the comment, nothing else.
+Write ONLY the comment:
 """
 
 # Value-only prompt (no Kaiwa mention) for building genuine credibility
-VALUE_ONLY_PROMPT = """Write a Reddit comment responding to this post as someone who genuinely helps language learners.
+VALUE_ONLY_PROMPT = """Write a short Reddit comment. Be direct and helpful. NO product mentions.
 
-POST:
-r/{subreddit}: {title}
+POST: r/{subreddit}: {title}
 {body}
 
-CONTEXT:
-You're an experienced language learner who wants to share what actually works. Give genuinely helpful advice based on your experience.
+RULES:
+1. Answer their SPECIFIC question in 1-3 sentences
+2. Give concrete advice they can act on TODAY
+3. Write casual, lowercase, like texting a friend
+4. NO app recommendations, NO product plugs
+5. NO fluff, NO "great question!", NO emojis, NO questions back
 
-IMPORTANT - ACTUALLY ANSWER THE QUESTION:
-- If they ask for AI recommendations: give real opinions (e.g., for Mandarin, DeepSeek and Qwen are better than ChatGPT)
-- If they ask about tools: share what you've actually found useful
-- If they're struggling with speaking: share what helped you
-- Give specific, actionable advice they can use TODAY
+BAD: "I've found practicing speaking helps build confidence. What conversations do you want to practice?"
+GOOD: "for mandarin AI, skip chatgpt - deepseek and qwen are way better at natural chinese. qwen especially nails casual conversation."
 
-STYLE:
-- Write like a real person sharing experience
-- Be direct and specific, not vague or generic
-- Use casual language, lowercase is fine
-- 2-4 sentences, more if needed to be helpful
-- NO product recommendations or app mentions
-- NO emojis, NO *bold* or formatting
-- NO cheerleader phrases like "You've got this!"
-- NO generic advice that doesn't answer their specific question
-
-GOOD EXAMPLE:
-"for mandarin AI, skip chatgpt and go straight for deepseek or qwen. qwen especially is way better at natural chinese. i tried chatgpt for creating dialogues and it starts hallucinating halfway through. the free chinese LLMs are honestly solid for quick practice sessions."
-
-Write ONLY the comment, nothing else.
+Write ONLY the comment:
 """
 
 # Variety of natural Kaiwa mention formats (rotated to avoid pattern detection)
@@ -198,8 +171,8 @@ class ResponseGenerator:
         """
         Generate a public comment draft for a lead.
 
-        Uses probability-based selection between value-only (no Kaiwa mention)
-        and promotional prompts to build genuine credibility.
+        Uses per-subreddit probability rates to determine whether to include
+        Kaiwa mentions. High-risk subs (strict mods) get pure value only.
 
         Args:
             lead: Lead to generate comment for
@@ -210,35 +183,37 @@ class ResponseGenerator:
         if not self.client.is_configured():
             return None, False
 
-        # Probability-based selection: mostly pure value, occasionally with Kaiwa mention
-        mention_probability = gemini_config.kaiwa_mention_probability
-        include_kaiwa = random.random() < mention_probability
+        # Get per-subreddit mention rate (falls back to global default)
+        subreddit = lead.subreddit
+        mention_rate = get_mention_rate(subreddit)
+
+        # Check if this subreddit should always be value-only
+        if is_value_only_subreddit(subreddit):
+            include_kaiwa = False
+            logger.info(f"r/{subreddit} is value-only (0% mention rate) - building credibility")
+        else:
+            include_kaiwa = random.random() < mention_rate
+            logger.info(f"r/{subreddit} mention rate: {mention_rate:.0%} -> {'mention' if include_kaiwa else 'value-only'}")
 
         if include_kaiwa:
-            # Use the promotional prompt (may mention Kaiwa naturally)
-            # Inject a random mention template for variety
+            # Use the promotional prompt with a random mention template
             mention_template = random.choice(KAIWA_MENTION_TEMPLATES)
             prompt = PUBLIC_DRAFT_PROMPT.format(
-                subreddit=lead.subreddit,
+                subreddit=subreddit,
                 title=lead.title,
-                body=lead.body[:1000],
-                category=lead.category or "General Learning",
-            ).replace(
-                "there's also kaiwa (trykaiwa) if you want something more structured",
-                mention_template
+                body=lead.body[:800],
+                kaiwa_mention=mention_template,
             )
-            logger.info(f"Using promotional prompt for {lead.post_id} (mention allowed)")
         else:
             # Use value-only prompt (no product mentions)
             prompt = VALUE_ONLY_PROMPT.format(
-                subreddit=lead.subreddit,
+                subreddit=subreddit,
                 title=lead.title,
-                body=lead.body[:1000],
+                body=lead.body[:800],
             )
-            logger.info(f"Using value-only prompt for {lead.post_id} (pure credibility building)")
 
         # Use response_model for better quality output
-        draft = self.client.generate(prompt, max_tokens=500, model=self.response_model)
+        draft = self.client.generate(prompt, max_tokens=300, model=self.response_model)
         return draft, include_kaiwa
 
     def generate_dm_draft(self, lead: Lead) -> Optional[str]:

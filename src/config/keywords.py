@@ -31,7 +31,7 @@ TRIGGER_KEYWORDS: list[str] = [
     # "conversational X" pattern
     *[f"conversational {lang}" for lang in SUPPORTED_LANGUAGES],
 
-    # === Speaking anxiety / emotional ===
+    # === Speaking anxiety / emotional / PAIN ===
     "afraid to speak",
     "scared to speak",
     "scared to talk",
@@ -41,10 +41,12 @@ TRIGGER_KEYWORDS: list[str] = [
     "freeze up",
     "freeze up speaking",
     "freezing up",
+    "freezing when",
     "blank out",
     "mind goes blank",
     "too shy",
     "embarrassed to speak",
+    "embarrassed when",
     "frustrated",
     "overwhelmed",
     "losing motivation",
@@ -52,12 +54,27 @@ TRIGGER_KEYWORDS: list[str] = [
     "giving up",
     "stuck at",
     "hit a wall",
+    "hit a plateau",
     "plateau",
+    "can't understand natives",
+    "too fast",  # "they speak too fast"
+    "speak too fast",
 
-    # === Life events / deadlines ===
+    # === Life events / deadlines / URGENCY (HIGH-STAKES) ===
     "moving to",
     "relocating to",
     "going to move",
+    "moving in",  # "moving in 2 weeks"
+    "relocating in",
+    "leaving in",
+    "interview next",
+    "presentation in",
+    "visa requirement",
+    "work visa",
+    "need for job",
+    "for my job",
+    "starting job",
+    "new job",
     "in-laws",
     "in laws",
     "partner's family",
@@ -75,6 +92,9 @@ TRIGGER_KEYWORDS: list[str] = [
     "deadline",
     "before i move",
     "before moving",
+    "expat",
+    "relocate",
+    "relocation",
 
     # === App/method frustration ===
     "duolingo isn't working",
@@ -131,6 +151,27 @@ TRIGGER_KEYWORDS: list[str] = [
     "c1",
     "conversational level",
     "can hold a conversation",
+
+    # === WALLET OPENERS (willingness to pay) ===
+    "tutor is expensive",
+    "tutor is too expensive",
+    "tutors are expensive",
+    "tutor costs",
+    "can't afford tutor",
+    "cheaper than tutor",
+    "worth the money",
+    "worth paying",
+    "willing to pay",
+    "paid course",
+    "paid app",
+    "better than duolingo",
+    "duolingo alternative",
+    "beyond duolingo",
+    "after duolingo",
+    "italki alternative",
+    "cheaper than italki",
+    "invest in",
+    "investment in",
 ]
 
 # Low-signal exclusion keywords
@@ -215,6 +256,31 @@ EXCLUDE_KEYWORDS: list[str] = [
     "which app",
     "youtube channel",
     "podcast recommendation",
+
+    # === FREE HUNTERS / CHEAPSKATES (will never pay) ===
+    "free alternative",
+    "free resource",
+    "free app",
+    "free course",
+    "free version",
+    "completely free",
+    "for free",
+    "without paying",
+    "don't want to spend",
+    "don't want to pay",
+    "no money",
+    "broke",
+    "can't afford",
+    "duolingo is enough",
+    "duolingo works",
+    "cracked",
+    "pirated",
+    "mod apk",
+    "apk",
+    "torrent",
+    "$0",
+    "zero dollars",
+    "not spending",
 ]
 
 

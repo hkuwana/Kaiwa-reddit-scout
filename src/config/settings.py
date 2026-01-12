@@ -52,7 +52,7 @@ class GeminiConfig:
             api_key=os.getenv("GEMINI_API_KEY", ""),
             model=os.getenv("GEMINI_MODEL", "gemma-3-27b-it"),
             response_model=os.getenv("RESPONSE_MODEL", "gemini-2.5-flash-lite"),
-            signal_threshold=int(os.getenv("SIGNAL_THRESHOLD", "7")),
+            signal_threshold=int(os.getenv("SIGNAL_THRESHOLD", "8")),
             require_comment_worthy=os.getenv("REQUIRE_COMMENT_WORTHY", "true").lower() == "true",
             kaiwa_mention_probability=float(os.getenv("KAIWA_MENTION_PROBABILITY", "0.2")),
         )
@@ -108,7 +108,7 @@ class AppConfig:
     def from_env(cls) -> "AppConfig":
         return cls(
             log_level=os.getenv("LOG_LEVEL", "INFO"),
-            max_posts_per_run=int(os.getenv("MAX_POSTS_PER_RUN", "100")),
+            max_posts_per_run=int(os.getenv("MAX_POSTS_PER_RUN", "300")),
             data_dir=PROJECT_ROOT / "data",
         )
 

@@ -24,10 +24,17 @@ POST DETAILS:
 - Body: {body}
 - Matched keywords: {triggers}
 
-SCORING CRITERIA:
-- Score 8-10 (HIGH): User explicitly expresses speaking anxiety, fear of conversation, or frustration with lack of speaking practice. They're actively seeking solutions.
-- Score 5-7 (MEDIUM): User mentions language learning challenges that could relate to speaking, but it's not their main focus.
-- Score 1-4 (LOW): User's post is about language learning but unlikely to benefit from a speaking practice app (grammar questions, resource sharing, etc.)
+SCORING CRITERIA (with adjustments for urgency and willingness to pay):
+- BASE SCORE: Start with psychological need assessment
+- +3 POINTS if mentions job/relocation/visa requirement (high urgency, high stakes)
+- +2 POINTS if mentions tutor costs or paid alternatives (price-conscious, willing to pay)
+- +2 POINTS if mentions embarrassment/anxiety in real situations (emotional pain)
+- -5 POINTS if asks for "free" resources or alternatives (will never pay)
+
+FINAL SCORE:
+- Score 8-10 (HIGH): Strong speaking anxiety OR urgent deadline (job/relocation) OR willing to pay. Actively seeking solutions.
+- Score 5-7 (MEDIUM): Some speaking challenges but no urgency or payment willingness signals.
+- Score 1-4 (LOW): General learning, free hunters, or unlikely to benefit from speaking practice app.
 
 CATEGORIES (pick the most relevant):
 - "Speaking Anxiety" - Fear of speaking, nervousness, embarrassment
@@ -46,10 +53,16 @@ BATCH_SCORING_PROMPT = """You are analyzing multiple Reddit posts to determine i
 
 Analyze each post and rate it as a potential lead.
 
-SCORING CRITERIA:
-- Score 8-10 (HIGH): User explicitly expresses speaking anxiety, fear of conversation, or frustration with lack of speaking practice.
-- Score 5-7 (MEDIUM): User mentions language learning challenges that could relate to speaking, but it's not their main focus.
-- Score 1-4 (LOW): User's post is about language learning but unlikely to benefit from a speaking practice app.
+SCORING CRITERIA (adjust for urgency and willingness to pay):
+- +3 POINTS for job/relocation/visa urgency
+- +2 POINTS for tutor cost complaints (willing to pay)
+- +2 POINTS for anxiety/embarrassment in real situations
+- -5 POINTS for "free" resource requests (will never pay)
+
+SCORES:
+- 8-10 (HIGH): Speaking anxiety OR urgent deadline OR willing to pay
+- 5-7 (MEDIUM): Some challenges but no urgency/payment signals
+- 1-4 (LOW): General learning or free hunters
 
 CATEGORIES: "Speaking Anxiety", "Practice Gap", "Immersion Prep", "Plateau Frustration", "App Fatigue", "General Learning"
 

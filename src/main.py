@@ -29,7 +29,7 @@ def setup_logging(level: str = "INFO"):
 
 def run_scout(
     subreddits: list[str] | None = None,
-    limit: int = 100,
+    limit: int = 300,
     use_mock: bool = False,
     verbose: bool = False,
     analyze: bool = False,
@@ -209,8 +209,8 @@ def main():
         "--limit",
         "-l",
         type=int,
-        default=100,
-        help="Maximum posts to fetch (default: 100)",
+        default=300,
+        help="Maximum posts to fetch (default: 300)",
     )
     parser.add_argument(
         "--mock",

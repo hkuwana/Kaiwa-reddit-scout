@@ -114,6 +114,36 @@ LANGUAGES: dict[str, Language] = {
     ),
 }
 
+# Priority languages - Top 7 high-potential markets
+PRIORITY_LANGUAGES = ["fr", "en", "es", "ja", "de", "zh", "ko"]
+
+# Relocation cluster - High-stakes subreddits for people with urgency and money
+RELOCATION_SUBREDDITS = [
+    "expats",
+    "IWantOut",
+    "digitalnomad",
+    "movingtojapan",
+    "japanlife",
+    "movingtogermany",
+    "germany",
+    "askFrance",
+    "movetocanada",
+    "IWantToLeaveTheUS",
+    "AmericanExpats",
+    "chinalife",
+    "Beijing",
+    "Shanghai",
+    "korea",
+    "Living_in_Korea",
+]
+
+# K-pop and cultural interest subreddits (high engagement, willing to invest)
+CULTURAL_SUBREDDITS = [
+    "kpop",
+    "kpophelp",
+    "Korean",
+]
+
 # General language learning subreddits (not language-specific)
 GENERAL_SUBREDDITS = [
     "languagelearning",
@@ -123,10 +153,14 @@ GENERAL_SUBREDDITS = [
 
 
 def get_all_subreddits() -> list[str]:
-    """Get all subreddits to monitor."""
+    """Get all subreddits to monitor (includes relocation and cultural subreddits)."""
     subreddits = set(GENERAL_SUBREDDITS)
-    for lang in LANGUAGES.values():
-        subreddits.update(lang.subreddits)
+    subreddits.update(RELOCATION_SUBREDDITS)
+    subreddits.update(CULTURAL_SUBREDDITS)
+    # Add language-specific subreddits for priority languages only
+    for code in PRIORITY_LANGUAGES:
+        if code in LANGUAGES:
+            subreddits.update(LANGUAGES[code].subreddits)
     return sorted(subreddits)
 
 
@@ -142,12 +176,15 @@ def get_language_names() -> list[str]:
 def detect_language(text: str) -> str | None:
     """
     Detect which language is being discussed in the text.
-    Returns language code or None.
+    Returns language code or None (only detects priority languages).
     """
     text_lower = text.lower()
-    for code, lang in LANGUAGES.items():
-        if lang.name.lower() in text_lower or lang.native_name.lower() in text_lower:
-            return code
+    # Only detect priority languages
+    for code in PRIORITY_LANGUAGES:
+        if code in LANGUAGES:
+            lang = LANGUAGES[code]
+            if lang.name.lower() in text_lower or lang.native_name.lower() in text_lower:
+                return code
     return None
 
 
